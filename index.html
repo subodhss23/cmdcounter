@@ -282,13 +282,8 @@ try{
   .footbar button[hidden]{display:none}
   .footbar button:hover:not(:disabled){color:var(--muted);border-color:var(--faint)}
   .footbar button:disabled{opacity:.3;cursor:default}
-  /* While running, pause is the live control - it fills so the eye lands on
-     it, which is the clearest "the clock is going" cue that costs no space. */
-  .footbar.running .foot-mid #swPause{
-    background:var(--olive);border-color:var(--olive);
-    color:var(--bg);font-weight:700;opacity:1;
-  }
-  .footbar.running .foot-mid #swPause:hover{color:var(--bg);border-color:var(--olive);filter:brightness(1.08)}
+  /* Pause and Reset share one ghost style in every state — the running dot
+     and bright time already say the clock is going, so the buttons match. */
   @media (max-width:460px){
     .footbar{grid-template-columns:1fr auto;gap:8px 12px}
     .foot-right{grid-column:1 / -1;justify-self:start}

@@ -43,8 +43,8 @@ http://localhost:7777   (on the box itself)
 - **Reset**: Reset button in UI
 - **Stopwatch**: bottom line of the page — time on the left, controls in the
   middle, "last command 2m ago" on the right. Whole minutes only (no
-  seconds), but while it runs the dot breathes, the time goes bright and
-  `pause` fills, so "is it going?" never needs the seconds to answer.
+  seconds), but while it runs the dot breathes and the time goes bright, so
+  "is it going?" never needs the seconds to answer.
   `start` stays on screen and dims once started, so it cannot be pressed
   twice — `pause` (which reads `resume` on pause) and `reset` pop in after
   starting. Persisted, survives restarts, independent

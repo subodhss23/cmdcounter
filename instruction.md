@@ -109,7 +109,7 @@ The bottom row of the page, in one line:
   | State | Buttons | How it looks |
   |---|---|---|
   | stopped | `start` | dot grey, `start` outlined; `pause`/`reset` hidden |
-  | **running** | `start` `pause` `reset` | dot green and breathing, time bright, `start` dimmed, `pause` filled green |
+  | **running** | `start` `pause` `reset` | dot green and breathing, time bright, `start` dimmed |
   | paused | `start` `resume` `reset` | dot gold, `start` dimmed, `resume` + `reset` outlined |
 
 - **Right** — how long ago the last command was counted.
@@ -122,8 +122,9 @@ Things worth knowing:
   `start`, and on pause the pause button reads `resume` (resuming picks up
   where it stopped rather than starting over). Press `reset` to zero it.
 - **You can always tell it is running**, even though there are no seconds:
-  the dot pulses a soft ring once every 2.6 seconds, the time goes bright,
-  and the `pause` button is filled in. Any one of those is enough.
+  the dot pulses a soft ring once every 2.6 seconds and the time goes
+  bright. Either one is enough. (`pause` and `reset` share one ghost style
+  in every state.)
 - **It shows whole minutes only** — `1h 24m`, `45m`, `0m`, `2d 3h`. The
   exact time is in the tooltip if you hover over it.
 - **The pulse can be turned off** by your OS "reduce motion" setting; the

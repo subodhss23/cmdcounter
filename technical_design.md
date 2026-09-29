@@ -407,16 +407,15 @@ first visit, applied pre-paint so there is no flash).
   - Exact `H:MM:SS` is kept in the `title` attribute for anyone who wants
     to hover — available without being visible.
   - **Running has to be legible without seconds.** Suppressing seconds
-    removes the one thing that made a stopwatch look alive, so three
+    removes the one thing that made a stopwatch look alive, so two
     independent signals carry the state instead:
     1. the dot **breathes** — one slow expanding ring every 2.6 s
        (`::after` + `@keyframes swring`), the standard "live" cue, sized at
        7 px so it reads peripherally and can be ignored. It is disabled and
        replaced by a static ring under `prefers-reduced-motion`;
-    2. the elapsed time goes from `--faint` to `--text`;
-    3. `pause` **fills** with `--olive` while running, so the eye lands on
-       the live control rather than having to read the dot.
-    Static states stay static: grey dot when stopped, gold dot when paused.
+     2. the elapsed time goes from `--faint` to `--text`.
+     `pause` and `reset` deliberately share one ghost style in all states.
+     Static states stay static: grey dot when stopped, gold dot when paused.
   - **`start` is always on screen and dims instead of vanishing.** Once the
     clock has started, the button takes the disabled feel (`disabled` +
     existing `:disabled` styling) rather than leaving the DOM, so the
