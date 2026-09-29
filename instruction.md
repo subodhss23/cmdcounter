@@ -387,6 +387,20 @@ sudo ss -ltnp | grep 7777          # server listening?
 If firewalld is off and SELinux is enforcing, check
 `sudo ausearch -m avc -ts recent` for a denial naming the port.
 
+**`POST /api/timer 404` in the browser console (stopwatch dead).**
+
+The page is newer than the running server: `index.html` was copied over but
+`server.py` was not (or the service was not restarted after copying it).
+Copy `server.py` too, then restart — the count is preserved:
+
+```bash
+scp cmdcounter/server.py almalinux@192.168.0.32:~/cmdcounter/
+# on the box:
+sudo systemctl restart cmdcount
+```
+
+Rule of thumb: `index.html` needs no restart, everything else does.
+
 **Commands counted twice.**
 
 The hook got sourced twice (e.g. duplicate lines in rc files). Check:

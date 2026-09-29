@@ -68,6 +68,10 @@ try{
     display:flex;
     flex-direction:column;
     align-items:center;
+    /* safe center: vertically centred when the page fits, but top-aligned
+       (and scrollable) when content is taller than the window — plain
+       center would clip the top off-screen with no way to scroll to it. */
+    justify-content:safe center;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
     transition:background .3s,color .3s;
