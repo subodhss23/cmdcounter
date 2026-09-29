@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command Counter</title>
+<script>
+/* apply saved theme before first paint (no flash) */
+try{
+  var t = localStorage.getItem("cc148-theme");
+  if(!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+}catch(e){ document.documentElement.dataset.theme = "dark"; }
+</script>
+<!--
+  Live dashboard. Single file, no external requests (works offline on an
+  isolated LAN). Palette: Olive Garden Feast.
+-->
+<style>
+  :root, [data-theme="dark"]{
+    --bg:#141a0e;
+    --panel:#1c2313;
+    --panel-2:#222a17;
+    --field:#10150a;
+    --line:rgba(254,250,224,.13);
+    --text:#fefae0;
+    --muted:#a9b18b;
+    --faint:#6f7757;
+    --olive:#8a9a5b;
+    --gold:#dda15e;
+    --copper:#bc6c25;
+    --success:#9aa86a;
+    --error:#d1603d;
+    --wash-1:rgba(96,108,56,.20);
+    --wash-2:rgba(188,108,37,.13);
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+    --track:rgba(254,250,224,.10);
+    --band:#dda15e;
+  }
+  [data-theme="light"]{
+    --bg:#fefae0;
+    --panel:#fffdf2;
+    --panel-2:#f7f1da;
+    --field:#ffffff;
+    --line:rgba(40,54,24,.16);
+    --text:#283618;
+    --muted:#6f7550;
+    --faint:#9a9c7a;
+    --olive:#606c38;
+    --gold:#bc6c25;
+    --copper:#bc6c25;
+    --success:#4c6b2f;
+    --error:#a34a28;
+    --wash-1:rgba(96,108,56,.12);
+    --wash-2:rgba(221,161,94,.20);
+    --shadow:0 14px 36px rgba(40,54,24,.12);
+    --track:rgba(40,54,24,.12);
+    --band:#bc6c25;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  ::selection{background:rgba(221,161,94,.45)}
+  html,body{min-height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    transition:background .3s,color .3s;
+  }
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  /* faint field light */
+  .ambient{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0}
+  .a1{width:600px;height:600px;left:-200px;top:-240px;background:radial-gradient(circle,var(--wash-1),transparent 65%)}
+  .a2{width:660px;height:660px;right:-240px;bottom:-300px;background:radial-gradient(circle,var(--wash-2),transparent 65%)}
+
+  .wrap{width:100%;max-width:780px;margin:auto;padding:20px 22px;position:relative;z-index:1}
+
+  /* ---- header ---- */
+  header{display:flex;align-items:center;gap:12px}
+  .machine{font-size:12.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .machine b{color:var(--text);font-weight:800}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .status{
+    display:flex;align-items:center;gap:8px;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:6px 14px 6px 11px;font-size:12px;font-weight:650;color:var(--muted);
+  }
+  #dot{width:8px;height:8px;border-radius:50%;background:var(--olive);box-shadow:0 0 8px rgba(138,154,91,.8)}
+  #dot.off{background:var(--faint);box-shadow:none}
+  .iconbtn{
+    width:34px;height:34px;border-radius:10px;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);
+    color:var(--muted);font-size:16px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color .15s,color .15s,transform .1s;
+  }
+  .iconbtn:hover{border-color:var(--gold);color:var(--text)}
+  .iconbtn:active{transform:scale(.93)}
+
+  /* ---- title + hero ---- */
+  .eyebrow{
+    margin-top:20px;font-size:12px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--gold);min-height:16px;
+  }
+  .hero{display:flex;align-items:flex-end;gap:26px;margin-top:8px;flex-wrap:wrap}
+  .bignum{
+    font-weight:750;letter-spacing:-.025em;line-height:1;
+    font-size:clamp(3rem,8vw,4.2rem);
+    font-variant-numeric:tabular-nums;
+  }
+  .bignum .sep{color:var(--faint);margin:0 .1em;font-weight:400}
+  .bignum #goal{font-size:.42em;font-weight:600;color:var(--muted);letter-spacing:0}
+  #count{transition:color .5s,text-shadow .5s}
+  .left-block{margin-left:auto;text-align:right;padding-left:26px;border-left:1px solid var(--line)}
+  #leftBig{
+    font-weight:750;letter-spacing:-.02em;line-height:1;
+    font-size:clamp(1.9rem,5vw,2.6rem);
+    font-variant-numeric:tabular-nums;
+    color:var(--gold);
+    transition:color .5s,text-shadow .5s;
+  }
+  .left-block .k{margin-top:6px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+
+  /* field-note quote — a new line every 25 */
+  .quoteblock{margin-top:12px;padding-left:14px;border-left:2px solid var(--gold);min-height:44px}
+  #cheer{
+    margin-top:4px;font-family:Georgia,"Times New Roman",serif;font-style:italic;
+    font-size:16.5px;line-height:1.45;color:var(--text);
+  }
+  #cheerAuthor{margin-top:7px;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+
+  /* ---- the gap bar ---- */
+  .phead{display:flex;align-items:baseline;justify-content:space-between;margin-top:14px}
+  .phead span:first-child{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  #pct{font-size:1.6rem;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums;transition:color .5s}
+  #colName{font-size:.85rem;font-weight:800;letter-spacing:.18em;transition:color .5s}
+  .pdot{color:var(--faint);margin:0 .35em}
+  .bar-zone{margin-top:10px;position:relative;padding-bottom:26px}
+  #toast{
+    position:absolute;top:-4px;right:0;transform:translateY(-100%);
+    background:var(--panel-2);border:1px solid var(--gold);color:var(--gold);
+    font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:999px;
+    opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;
+    box-shadow:var(--shadow);
+  }
+  #toast.show{opacity:1}
+  .bar{
+    position:relative;height:20px;border-radius:999px;
+    background:var(--track);
+    border:1px solid var(--line);
+    overflow:visible;
+  }
+  #fill{
+    display:block;height:100%;width:0;border-radius:999px;position:relative;
+    background:linear-gradient(90deg,var(--copper),var(--gold));
+    box-shadow:0 0 16px rgba(188,108,37,.45);
+    transition:width .8s cubic-bezier(.25,.9,.3,1),background-color .5s,box-shadow .5s;
+  }
+  #fill.done{box-shadow:0 0 22px rgba(154,168,106,.55)}
+  .shine{position:absolute;inset:0;border-radius:999px;overflow:hidden;pointer-events:none}
+  .shine::after{
+    content:"";position:absolute;top:0;bottom:0;width:70px;
+    background:linear-gradient(100deg,transparent,rgba(254,250,224,.28),transparent);
+    animation:sweep 3.4s ease-in-out infinite;
+  }
+  [data-theme="light"] .shine::after{background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent)}
+  @keyframes sweep{0%{left:-90px}60%,100%{left:calc(100% + 20px)}}
+  .tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--faint);opacity:.55}
+  .tick.hit{background:var(--gold);opacity:1;box-shadow:0 0 8px rgba(221,161,94,.8)}
+  .tick.hit span{color:var(--gold)}
+  .tick.ping{animation:tickping .9s ease-out}
+  @keyframes tickping{0%{box-shadow:0 0 0 0 rgba(221,161,94,.7)}100%{box-shadow:0 0 0 12px rgba(221,161,94,0)}}
+  .tick span{
+    position:absolute;top:28px;left:50%;transform:translateX(-50%);
+    font-size:10px;font-weight:700;color:var(--faint);font-variant-numeric:tabular-nums;
+    letter-spacing:.05em;
+  }
+  .flag{
+    position:absolute;right:-6px;top:50%;transform:translateY(-50%) rotate(45deg);
+    width:12px;height:12px;background:var(--gold);
+    box-shadow:0 0 12px rgba(221,161,94,.85);
+  }
+  .barmeta{display:flex;align-items:baseline;justify-content:space-between;margin-top:8px;
+    font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  /* ---- stats ---- */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+  .stat .k{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{margin-top:8px;font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;word-break:break-word}
+  .stat .v.small{font-size:.9rem;font-weight:600}
+  .stat.done .v{color:var(--success)}
+
+  /* ---- sets: the 25-command sprint inside the marathon ---- */
+  .sets{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-top:10px}
+  .sets-head{display:flex;align-items:baseline;justify-content:space-between}
+  .sets-head .k{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  #setsCount{font-size:1.25rem;font-weight:750;font-variant-numeric:tabular-nums}
+  .pips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+  .pip{width:20px;height:14px;border-radius:4px;background:var(--track);border:1px solid var(--line)}
+  .pip.done{background:var(--band);border-color:var(--band)}
+  .pip.now{border-color:var(--band);animation:pippulse 1.6s ease-in-out infinite}
+  @keyframes pippulse{50%{opacity:.55}}
+  .pips.mini{gap:4px}
+  .pips.mini .pip{width:14px;height:11px;border-radius:3px}
+  .pips.tiny{gap:3px}
+  .pips.tiny .pip{width:10px;height:8px;border-radius:2px}
+  .setnow{display:flex;align-items:baseline;justify-content:space-between;margin-top:10px;
+    font-size:12px;color:var(--muted)}
+  #setLabel{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .setbar{margin-top:8px;height:8px;border-radius:999px;background:var(--track);
+    border:1px solid var(--line);overflow:hidden}
+  #setFill{display:block;height:100%;width:0;background:var(--band);border-radius:999px;
+    transition:width .5s cubic-bezier(.25,.9,.3,1),background-color .5s}
+
+  .meta{margin-top:10px;text-align:center;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .meta .sep-dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--faint);margin:0 10px;vertical-align:middle;opacity:.7}
+
+  #doneMsg{
+    display:none;margin-top:12px;padding:15px 18px;border-radius:14px;text-align:center;
+    background:rgba(96,108,56,.16);border:1px solid var(--olive);
+    color:var(--text);font-size:14.5px;font-weight:650;
+  }
+  #doneMsg.on{display:block}
+
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+  #confetti .cf{position:absolute;width:8px;height:12px;border-radius:2px}
+
+  /* ---- settings modal ---- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,13,7,.62);
+    display:none;align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  [data-theme="light"] .overlay{background:rgba(40,54,24,.4)}
+  .overlay.open{display:flex}
+  .modal{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);width:100%;max-width:380px;
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+  .modal-head span{font-size:15px;font-weight:700}
+  #modalX{background:none;border:none;color:var(--muted);font-size:16px;font-weight:600;
+    cursor:pointer;padding:6px 10px;border-radius:8px;line-height:1}
+  #modalX:hover{color:var(--text);background:var(--track)}
+  .modal-body{padding:14px 20px 20px}
+  .modal-body label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+  .modal-body label:first-child{margin-top:0}
+  input[type=text],input[type=number]{
+    width:100%;padding:11px 13px;font-size:15px;font-weight:600;color:var(--text);
+    background:var(--field);border:1px solid var(--line);border-radius:10px;outline:none;
+    font-variant-numeric:tabular-nums;
+  }
+  input[type=text]:focus,input[type=number]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(221,161,94,.22)}
+  .modal-btns{display:flex;gap:10px;margin-top:16px}
+  button.action{flex:1;font-size:13.5px;font-weight:700;padding:12px 10px;border-radius:10px;cursor:pointer;transition:transform .08s,filter .15s}
+  #save{background:linear-gradient(135deg,var(--copper),var(--gold));color:#1c1508;border:none;box-shadow:0 6px 18px rgba(188,108,37,.35)}
+  #save:hover{filter:brightness(1.07)}
+  #save:active{transform:scale(.97)}
+  #reset{background:transparent;color:var(--text);border:1px solid var(--line)}
+  #reset:hover{border-color:var(--error);color:var(--error)}
+  #msg{min-height:20px;margin-top:12px;font-size:12.5px;font-weight:600}
+  #msg.err{color:var(--error)}
+
+  @media (max-width:640px){
+    .wrap{padding:22px 16px}
+    .hero{gap:16px}
+    .left-block{margin-left:0;text-align:left;padding-left:0;border-left:none;
+      border-top:1px solid var(--line);padding-top:14px;width:100%}
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #fill,#setFill,#count,#pct,#leftBig{transition:none}
+    .shine::after,.pip.now{animation:none}
+  }
+  /* short viewport (e.g. 14" laptop): tighten rhythm so all fits */
+  @media (max-height:860px){
+    .wrap{padding:14px 22px}
+    .eyebrow{margin-top:14px}
+    .bignum{font-size:clamp(2.6rem,7vh,3.6rem)}
+    #leftBig{font-size:clamp(1.8rem,5vh,2.4rem)}
+    .hero{margin-top:6px}
+    .quoteblock{margin-top:10px;min-height:0}
+    .phead{margin-top:10px}
+    .grid{margin-top:12px}
+    .sets{margin-top:10px}
+    .meta{margin-top:8px}
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient a1"></div>
+<div class="ambient a2"></div>
+
+<div class="wrap">
+  <header>
+    <div class="machine">Terminal <b id="machineName">–</b></div>
+    <div class="top-right">
+      <span class="status"><span id="dot"></span><span id="liveText">Live</span></span>
+      <button id="themeBtn" class="iconbtn" type="button" title="Toggle light / dark" aria-label="Toggle light and dark mode">&#9788;</button>
+      <button id="gearBtn" class="iconbtn" type="button" title="Settings" aria-label="Settings">&#9881;</button>
+    </div>
+  </header>
+
+  <p class="eyebrow" id="titleLabel">Commands entered</p>
+
+  <div class="hero">
+    <div class="bignum"><span id="count">–</span><span class="sep">/</span><span id="goal">–</span></div>
+    <div class="left-block">
+      <div id="leftBig">–</div>
+      <div class="k">to go</div>
+    </div>
+  </div>
+
+  <div class="quoteblock">
+    <p id="cheer">&ldquo;I have nothing in common with lazy people who blame others for their lack of success.&rdquo;</p>
+    <div id="cheerAuthor">&mdash; Kobe Bryant</div>
+  </div>
+
+  <div class="phead"><span>Progress</span><span><span id="pct">–</span><span class="pdot"> · </span><span id="colName">–</span></span></div>
+  <div class="bar-zone">
+    <div id="toast"></div>
+    <div class="bar" role="progressbar" aria-label="Progress to goal">
+      <i id="fill" style="width:0%"></i>
+      <div class="shine"></div>
+      <div class="tick hit" data-p="25" style="left:25%"><span>25%</span></div>
+      <div class="tick hit" data-p="50" style="left:50%"><span>50%</span></div>
+      <div class="tick" data-p="75" style="left:75%"><span>75%</span></div>
+      <div class="flag"></div>
+    </div>
+    <div class="barmeta"><span>0</span><span id="goalEnd">–</span></div>
+  </div>
+
+  <section class="grid">
+    <div class="stat"><div class="k">Percent</div><div class="v" id="sPct">–</div></div>
+    <div class="stat"><div class="k">Remaining</div><div class="v" id="sLeft">–</div></div>
+    <div class="stat"><div class="k">Counted</div><div class="v" id="sCount">–</div></div>
+    <div class="stat"><div class="k">Status</div><div class="v small" id="sStatus">–</div></div>
+  </section>
+
+  <section class="sets" aria-label="Sets of 25 commands">
+    <div class="sets-head"><span class="k">Sets</span><span id="setsCount">25/40</span></div>
+    <div class="pips" id="pips"><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip now" style="background:linear-gradient(90deg, var(--band) 48%, var(--track) 48%)"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
+    <div class="setnow"><span id="setLabel">Set 26 · 12/25</span><span id="setMore">13 more to close it</span></div>
+    <div class="setbar"><i id="setFill" style="width:48%"></i></div>
+  </section>
+
+  <p class="meta"><span id="sessTime">Session –</span><span class="sep-dot"></span><span id="lastActive">Last command –</span></p>
+
+  <div id="doneMsg">Full harvest. A thousand strong.</div>
+</div>
+
+<div id="confetti"></div>
+
+<div class="overlay" id="settingsModal" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="modal">
+    <div class="modal-head"><span>Settings</span><button id="modalX" type="button" aria-label="Close">&#10005;</button></div>
+    <div class="modal-body">
+      <label for="titleIn">Title</label>
+      <input type="text" id="titleIn" maxlength="80" value="Commands entered" autocomplete="off">
+      <label for="goalIn">Goal</label>
+      <input type="number" id="goalIn" min="1" step="1" value="1000">
+      <div class="modal-btns">
+        <button id="save" class="action" type="button">Save</button>
+        <button id="reset" class="action" type="button">Reset</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let lastCount = null, lastComplete = null, lastPct = null, lastTier = null, lastSets = null, lastPipsSig = "", editingGoal = false, displayed = null;
+const fmt = n => (n===null||n===undefined) ? "-" : Number(n).toLocaleString();
+
+/* ---------- theme (dark / light), remembered per browser ---------- */
+function paintThemeBtn(){
+  $("themeBtn").innerHTML = document.documentElement.dataset.theme === "light" ? "&#9789;" : "&#9788;";
+  $("themeBtn").setAttribute("aria-pressed", document.documentElement.dataset.theme === "light" ? "true" : "false");
+}
+function toggleTheme(){
+  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  document.documentElement.dataset.theme = next;
+  try{ localStorage.setItem("cc148-theme", next); }catch(e){}
+  paintThemeBtn();
+}
+paintThemeBtn();
+$("themeBtn").onclick = toggleTheme;
+
+/* chase colors: 20 DARK tones sequenced for maximum contrast between
+   neighbours — every 25 commands the whole page jumps to an obviously
+   different color. [hex, name] pairs. */
+const COLORS = [["#c2410c","Ember"],["#1d4ed8","Royal"],["#166534","Forest"],["#a21caf","Magenta"],["#5b3a1e","Chocolate"],["#0f766e","Teal"],["#b91c1c","Crimson"],["#1e3a8a","Navy"],["#4d7c0f","Olive"],["#7e22ce","Violet"],["#92400e","Bronze"],["#0c4a6e","Ocean"],["#be123c","Rose"],["#334155","Slate"],["#8a3b12","Rust"],["#4338ca","Indigo"],["#b45309","Copper"],["#4a044e","Aubergine"],["#0f3d2e","Pine"],["#881337","Burgundy"]];
+
+/* ---------- field notes: 128 quotes, a new one every 25 commands ---------- */
+const QUOTES = [
+["Never give in — never, never, never, never, in nothing great or small, large or petty, never give in except to convictions of honour and good sense.", "Winston Churchill"],
+["I have not failed. I've just found 10,000 ways that won't work.", "Thomas Edison"],
+["It does not matter how slowly you go as long as you do not stop.", "Confucius"],
+["Ever tried. Ever failed. No matter. Try again. Fail again. Fail better.", "Samuel Beckett"],
+["Winners never quit and quitters never win.", "Vince Lombardi"],
+["I've missed more than 9000 shots in my career. I've lost almost 300 games. And that is why I succeed.", "Michael Jordan"],
+["Genius is one percent inspiration and ninety-nine percent perspiration.", "Thomas Edison"],
+["Nothing in this world can take the place of persistence.", "Calvin Coolidge"],
+["You may encounter many defeats, but you must not be defeated.", "Maya Angelou"],
+["It always seems impossible until it's done.", "Nelson Mandela"],
+["It is impossible to live without failing at something, unless you live so cautiously that you might as well not have lived at all.", "J.K. Rowling"],
+["Amateurs sit and wait for inspiration, the rest of us just get up and go to work.", "Stephen King"],
+["Eighty percent of success is showing up.", "Woody Allen"],
+["I hated every minute of training, but I said, 'Don't quit. Suffer now and live the rest of your life as a champion.'", "Muhammad Ali"],
+["Success is no accident. It is hard work, perseverance, learning, studying, sacrifice and most of all, love of what you are doing.", "Pelé"],
+["There are no secrets to success. It is the result of preparation, hard work, and learning from failure.", "Colin Powell"],
+["Failure is simply the opportunity to begin again, this time more intelligently.", "Henry Ford"],
+["Success is to be measured not so much by the position that one has reached in life as by the obstacles which he has overcome.", "Booker T. Washington"],
+["Our greatest glory is not in never falling, but in rising every time we fall.", "Confucius"],
+["The fight is won or lost far away from witnesses — behind the lines, in the gym, and out there on the road, long before I dance under those lights.", "Muhammad Ali"],
+["We are what we repeatedly do. Excellence, then, is not an act, but a habit.", "Aristotle"],
+["I fear not the man who has practiced 10,000 kicks once, but I fear the man who has practiced one kick 10,000 times.", "Bruce Lee"],
+["Practice does not make perfect. Only perfect practice makes perfect.", "Vince Lombardi"],
+["Practice isn't the thing you do once you're good. It's the thing you do that makes you good.", "Malcolm Gladwell"],
+["Great things come from hard work and perseverance. No excuses.", "Kobe Bryant"],
+["I have nothing in common with lazy people who blame others for their lack of success.", "Kobe Bryant"],
+["Rest at the end, not in the middle.", "Kobe Bryant"],
+["Knowing is not enough, we must apply. Willing is not enough, we must do.", "Bruce Lee"],
+["Repetition is the mother of learning.", "Latin proverb"],
+["Repetition is the mother of skill.", "Tony Robbins"],
+["Success is neither magical nor mysterious. Success is the natural consequence of consistently applying basic fundamentals.", "Jim Rohn"],
+["Small disciplines repeated with consistency every day lead to great achievements gained slowly over time.", "John C. Maxwell"],
+["Small, smart choices + consistency + time = radical difference.", "Darren Hardy"],
+["You do not rise to the level of your goals. You fall to the level of your systems.", "James Clear"],
+["Every action you take is a vote for the type of person you wish to become.", "James Clear"],
+["Don't break the chain.", "Jerry Seinfeld"],
+["I will persist until I succeed.", "Og Mandino"],
+["The expert in anything was once a beginner.", "Helen Hayes"],
+["You don't have to be great to start, but you have to start to be great.", "Zig Ziglar"],
+["The only impossible journey is the one you never begin.", "Tony Robbins"],
+["An expert is a person who has made all the mistakes that can be made in a very narrow field.", "Niels Bohr"],
+["It's not that I'm so smart, it's just that I stay with problems longer.", "Albert Einstein"],
+["If I have seen further it is by standing on the shoulders of Giants.", "Isaac Newton"],
+["Nothing in life is to be feared, it is only to be understood.", "Marie Curie"],
+["What I cannot create, I do not understand.", "Richard Feynman"],
+["Study hard what interests you the most in the most undisciplined, irreverent and original manner possible.", "Richard Feynman"],
+["Take a simple idea and take it seriously.", "Charlie Munger"],
+["You can't connect the dots looking forward; you can only connect them looking backwards.", "Steve Jobs"],
+["The difference between successful people and really successful people is that really successful people say no to almost everything.", "Warren Buffett"],
+["Focus is about saying no.", "Steve Jobs"],
+["Absorb what is useful, discard what is not, add what is uniquely your own.", "Bruce Lee"],
+["Do nothing that is of no use.", "Miyamoto Musashi"],
+["Simplicity is the ultimate sophistication.", "Leonardo da Vinci"],
+["A jack of all trades is a master of none.", "English proverb"],
+["The man who chases two rabbits catches neither.", "Confucius"],
+["The future belongs to those who learn more skills and combine them in creative ways.", "Robert Greene"],
+["You must understand that there is more than one path to the top of the mountain.", "Miyamoto Musashi"],
+["Well begun is half done.", "Aristotle"],
+["Computer science is no more about computers than astronomy is about telescopes.", "Edsger Dijkstra"],
+["The best way to predict the future is to invent it.", "Alan Kay"],
+["Talk is cheap. Show me the code.", "Linus Torvalds"],
+["I choose a lazy person to do a hard job. Because a lazy person will find an easy way to do it.", "Bill Gates"],
+["Stay hungry, stay foolish.", "Steve Jobs"],
+["The most dangerous phrase in the language is, 'We've always done it this way.'", "Grace Hopper"],
+["Humans are allergic to change. They love to say, 'We've always done it this way.'", "Grace Hopper"],
+["Premature optimization is the root of all evil.", "Donald Knuth"],
+["Given enough eyeballs, all bugs are shallow.", "Eric S. Raymond"],
+["Most good programmers do programming not because they expect to get paid, but because it is fun to program.", "Linus Torvalds"],
+["Your most unhappy customers are your greatest source of learning.", "Bill Gates"],
+["The only way to do great work is to love what you do.", "Steve Jobs"],
+["A change in perspective is worth 80 IQ points.", "Alan Kay"],
+["Simplicity is prerequisite for reliability.", "Edsger Dijkstra"],
+["Programs must be written for people to read, and only incidentally for machines to execute.", "Harold Abelson"],
+["Everyone knows that debugging is twice as hard as writing a program in the first place.", "Brian Kernighan"],
+["Controlling complexity is the essence of computer programming.", "Brian Kernighan"],
+["The bearing of a child takes nine months, no matter how many women are assigned.", "Fred Brooks"],
+["Some people, when confronted with a problem, think 'I know, I'll use regular expressions.' Now they have two problems.", "Jamie Zawinski"],
+["The three chief virtues of a programmer are: Laziness, Impatience and Hubris.", "Larry Wall"],
+["If I had an hour to solve a problem I'd spend 55 minutes thinking about the problem and 5 minutes thinking about solutions.", "Albert Einstein"],
+["We cannot solve our problems with the same thinking we used when we created them.", "Albert Einstein"],
+["Whether you think you can or you think you can't, you're right.", "Henry Ford"],
+["The first rule of any technology used in a business is that automation applied to an efficient operation will magnify the efficiency.", "Bill Gates"],
+["The second is that automation applied to an inefficient operation will magnify the inefficiency.", "Bill Gates"],
+["When something is important enough, you do it even if the odds are not in your favor.", "Elon Musk"],
+["Persistence is very important. You should not give up unless you are forced to give up.", "Elon Musk"],
+["We are stubborn on vision. We are flexible on details.", "Jeff Bezos"],
+["Fall seven times, stand up eight.", "Japanese proverb"],
+["A journey of a thousand miles begins with a single step.", "Laozi"],
+["An investment in knowledge pays the best interest.", "Benjamin Franklin"],
+["What you get by achieving your goals is not as important as what you become by achieving your goals.", "Zig Ziglar"],
+["Do the hard jobs first. The easy jobs will take care of themselves.", "Dale Carnegie"],
+["Inaction breeds doubt and fear. Action breeds confidence and courage.", "Dale Carnegie"],
+["The impediment to action advances action. What stands in the way becomes the way.", "Marcus Aurelius"],
+["The soul becomes dyed with the color of its thoughts.", "Marcus Aurelius"],
+["What we think, we become.", "Buddha"],
+["The best time to plant a tree was 20 years ago. The second best time is now.", "Chinese proverb"],
+["Success usually comes to those who are too busy to be looking for it.", "Henry David Thoreau"],
+["The computer was born to solve problems that did not exist before.", "Bill Gates"],
+["Action is the foundational key to all success.", "Pablo Picasso"],
+["Do or do not. There is no try.", "Yoda"],
+["If you're not failing every now and again, it's a sign you're not doing anything very innovative.", "Woody Allen"],
+["The only way to discover the limits of the possible is to go beyond them into the impossible.", "Arthur C. Clarke"],
+["If we knew what it was we were doing, it would not be called research, would it?", "Albert Einstein"],
+["Do the thing you fear most and the death of fear is certain.", "Mark Twain"],
+["You miss 100% of the shots you don't take.", "Wayne Gretzky"],
+["What would you attempt to do if you knew you could not fail?", "Robert Schuller"],
+["A person who never made a mistake never tried anything new.", "Albert Einstein"],
+["Our greatest weakness lies in giving up.", "Thomas Edison"],
+["Move fast and break things.", "Mark Zuckerberg"],
+["If you are not embarrassed by the first version of your product, you've launched too late.", "Reid Hoffman"],
+["Done is better than perfect.", "Sheryl Sandberg"],
+["Action expresses priorities.", "Mahatma Gandhi"],
+["Well done is better than well said.", "Benjamin Franklin"],
+["The way to get started is to quit talking and begin doing.", "Walt Disney"],
+["Success is the sum of small efforts, repeated day in and day out.", "Robert Collier"],
+["Motivation is what gets you started. Habit is what keeps you going.", "Jim Ryun"],
+["You'll never change your life until you change something you do daily.", "John C. Maxwell"],
+["First we make our habits, and then our habits make us.", "John Dryden"],
+["Drop by drop is the water pot filled.", "Buddha"],
+["Where focus goes, energy flows.", "Tony Robbins"],
+["I have no special talent. I am only passionately curious.", "Albert Einstein"],
+["The successful warrior is the average man, with laser-like focus.", "Bruce Lee"],
+["The art of being wise is the art of knowing what to overlook.", "William James"],
+["Concentration is the secret of strength.", "Ralph Waldo Emerson"],
+["He who is everywhere is nowhere.", "Seneca"],
+["To do two things at once is to do neither.", "Publilius Syrus"],
+["Beware the barrenness of a busy life.", "Socrates"],
+["Write down 25 priorities. Circle the top 5. Avoid the other 20 at all costs.", "Warren Buffett"]
+];
+
+function say(t, err){
+  const el = $("msg");
+  el.textContent = t;
+  el.style.color = err ? "var(--error)" : "var(--success)";
+  if(t) setTimeout(()=>{ if(el.textContent===t) el.textContent=""; },2600);
+}
+
+/* eased count-up tween so each new command visibly climbs */
+function tweenTo(target){
+  const el = $("count");
+  if(reducedMotion || displayed === null){ displayed = target; el.textContent = fmt(target); return; }
+  const from = displayed, t0 = performance.now(), dur = 650;
+  displayed = target;
+  (function step(t){
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(Math.round(from + (target - from) * e));
+    if(k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+function burst(){
+  if(reducedMotion) return;
+  const box = $("confetti");
+  const colors = ["#dda15e", "#bc6c25", "#fefae0", "#606c38"];
+  for(let i = 0; i < 56; i++){
+    const p = document.createElement("i");
+    p.className = "cf";
+    p.style.background = colors[i % colors.length];
+    p.style.left = "50%";
+    p.style.top = "34%";
+    box.appendChild(p);
+    const a = Math.random() * Math.PI * 2, d = 140 + Math.random() * 300;
+    p.animate(
+      [{transform: "translate(0,0) rotate(0deg)", opacity: 1},
+       {transform: "translate(" + (Math.cos(a) * d) + "px," + (Math.sin(a) * d + 180) + "px) rotate(" + (Math.random() * 720 - 360) + "deg)", opacity: 0}],
+      {duration: 1100 + Math.random() * 800, easing: "cubic-bezier(.2,.7,.3,1)"}
+    ).onfinish = () => p.remove();
+  }
+}
+
+let toastTimer = null;
+function toast(msg){
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 2600);
+}
+const MILESTONES = {25: "25% — off to a strong start", 50: "50% — halfway there", 75: "75% — final stretch"};
+
+/* rank ladder: percent-based tiers, so ranks work with any goal */
+const RANKS = ["Seed","Sprout","Sapling","Tiller","Keeper","Harvester","Reaper","Granary","Redwood","Legend"];
+function rankFor(s, pct){
+  if(s.complete) return {name: "Mythic", lvl: "Lvl MAX", tier: 10};
+  const t = Math.min(9, Math.floor(pct / 10));
+  return {name: RANKS[t], lvl: "Lvl " + (t + 1), tier: t};
+}
+
+function fmtDur(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  if(d > 0) return d + "d " + h + "h";
+  if(h > 0) return h + "h " + m + "m";
+  if(m > 0) return m + "m";
+  return "under a minute";
+}
+function fmtIdle(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  if(sec < 60) return "just now";
+  if(sec < 3600) return Math.floor(sec / 60) + "m ago";
+  return Math.floor(sec / 3600) + "h " + Math.floor(sec % 3600 / 60) + "m ago";
+}
+
+function render(s){
+  $("titleLabel").textContent = s.title || "Commands entered";
+  $("machineName").textContent = s.host || "—";
+  $("goal").textContent = fmt(s.goal);
+  $("goalEnd").textContent = fmt(s.goal);
+  const pct = Math.max(0, Math.min(100, s.percent));
+  /* every 25 commands: new quote + new chase color (dark only) */
+  const band = Math.floor(s.count / 25);
+  const qi = band % QUOTES.length;
+  const col = COLORS[band % COLORS.length][0];
+  const cname = COLORS[band % COLORS.length][1];
+  $("count").style.color = col;
+  $("count").style.textShadow = "0 0 22px " + col + "66";
+  $("fill").style.background = col;
+  $("fill").style.boxShadow = "0 0 16px " + col + "55";
+  $("pct").style.color = col;
+  /* one band color for counter + bar + sets (pips read it via the variable) */
+  document.documentElement.style.setProperty("--band", col);
+  $("setFill").style.background = col;
+  const rk = rankFor(s, pct);
+  $("colName").textContent = cname.toUpperCase();
+  $("colName").style.color = col;
+  $("leftBig").style.color = col;
+  $("leftBig").style.textShadow = "0 0 18px " + col + "66";
+  $("pct").textContent = s.percent + "%";
+  $("sPct").textContent = s.percent + "%";
+  $("sLeft").textContent = fmt(s.remaining);
+  $("leftBig").textContent = fmt(s.remaining);
+  $("sCount").textContent = fmt(s.count);
+  $("sStatus").textContent = s.complete ? "Complete" : (fmt(s.remaining) + " to go");
+  $("sStatus").parentElement.classList.toggle("done", !!s.complete);
+  $("cheer").textContent = "\u201C" + QUOTES[qi][0] + "\u201D";
+  $("cheerAuthor").textContent = "— " + QUOTES[qi][1];
+  $("fill").style.width = pct + "%";
+  $("fill").classList.toggle("done", !!s.complete);
+  $("doneMsg").classList.toggle("on", !!s.complete);
+  document.querySelectorAll(".tick").forEach(t=>{
+    const p = parseFloat(t.dataset.p);
+    const was = t.classList.contains("hit");
+    if(pct >= p){
+      t.classList.add("hit");
+      if(!was && lastPct !== null && !reducedMotion){
+        t.classList.remove("ping"); void t.offsetWidth; t.classList.add("ping");
+      }
+    } else t.classList.remove("hit");
+  });
+  let fired = false;
+  for(const m of [25, 50, 75]){
+    if(lastPct !== null && lastPct < m && pct >= m){ toast(MILESTONES[m]); fired = true; break; }
+  }
+  if(!fired && lastTier !== null && rk.tier > lastTier){ toast("Rank up — " + rk.name); fired = true; }
+  lastTier = rk.tier;
+  lastPct = pct;
+  /* sets: the 25-command sprint (short-term goal inside the marathon) */
+  const SET = Math.min(25, s.goal);
+  const totalSets = Math.max(1, Math.ceil(s.goal / SET));
+  const doneSets = Math.min(totalSets, Math.floor(s.count / SET));
+  const inSet = s.complete ? SET : (s.count % SET);
+  const setNo = Math.min(totalSets, doneSets + 1);
+  $("setsCount").textContent = doneSets + "/" + totalSets;
+  $("setLabel").textContent = "Set " + setNo + " · " + inSet + "/" + SET;
+  $("setMore").textContent = s.complete ? "all sets closed" : ((SET - inSet) + " more to close it");
+  $("setFill").style.width = (inSet / SET * 100) + "%";
+  const sig = totalSets + ":" + doneSets + ":" + s.complete;
+  if(sig !== lastPipsSig){
+    lastPipsSig = sig;
+    const box = $("pips");
+    box.innerHTML = "";
+    box.classList.toggle("mini", totalSets > 40 && totalSets <= 100);
+    box.classList.toggle("tiny", totalSets > 100);
+    for(let i = 0; i < totalSets; i++){
+      const p = document.createElement("i");
+      p.className = "pip" + (i < doneSets ? " done" : (i === doneSets && !s.complete ? " now" : ""));
+      p.title = "Set " + (i + 1);
+      box.appendChild(p);
+    }
+  }
+  /* current pip fills light→dark with in-set progress, every poll */
+  const nowPip = $("pips").querySelector(".pip.now");
+  if(nowPip) nowPip.style.background =
+    "linear-gradient(90deg, var(--band) " + (inSet / SET * 100) + "%, var(--track) " + (inSet / SET * 100) + "%)";
+  if(!fired && lastSets !== null && doneSets > lastSets){ toast("Set " + doneSets + "/" + totalSets + " closed — " + cname); }
+  lastSets = doneSets;
+  $("sessTime").textContent = "Session " + fmtDur(s.elapsed_seconds);
+  $("lastActive").textContent = "Last command " + fmtIdle(s.idle_seconds);
+  if(!editingGoal){
+    $("goalIn").value = s.goal;
+    $("titleIn").value = s.title || "";
+  }
+  if(lastCount === null){ displayed = s.count; $("count").textContent = fmt(s.count); }
+  else if(s.count !== lastCount){ tweenTo(s.count); }
+  lastCount = s.count;
+  if(s.complete && lastComplete === false) burst();
+  lastComplete = s.complete;
+}
+
+async function poll(){
+  try{
+    const r = await fetch("/api/state", {cache: "no-store"});
+    if(!r.ok) throw 0;
+    render(await r.json());
+    $("dot").classList.remove("off");
+    $("liveText").textContent = "Live";
+  }catch(e){
+    $("dot").classList.add("off");
+    $("liveText").textContent = "Offline";
+  }
+}
+async function post(p, b){
+  const r = await fetch(p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b || {})});
+  if(!r.ok) throw 0;
+  return r.json();
+}
+
+const modal = $("settingsModal");
+function openModal(){ modal.classList.add("open"); editingGoal = true; $("msg").textContent = ""; setTimeout(()=>$("goalIn").focus(), 30); }
+function closeModal(){ modal.classList.remove("open"); editingGoal = false; }
+$("gearBtn").onclick = openModal;
+$("modalX").onclick = closeModal;
+modal.addEventListener("click", e => { if(e.target === modal) closeModal(); });
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") closeModal();
+  else if((e.key === "s" || e.key === "S") && !modal.classList.contains("open")
+    && !/INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || "")) openModal();
+});
+
+$("save").onclick = async ()=>{
+  const g = parseInt($("goalIn").value, 10);
+  if(!g || g < 1) return say("Enter goal of 1+", true);
+  const t = $("titleIn").value;
+  try{
+    editingGoal = false;
+    render(await post("/api/goal", {goal: g}));
+    render(await post("/api/title", {title: t}));
+    say("Settings saved"); closeModal();
+  }catch(e){ say("Could not save", true); }
+};
+$("reset").onclick = async ()=>{
+  if(!confirm("Reset counter to 0?")) return;
+  try{ render(await post("/api/reset", {})); say("Counter reset"); closeModal(); }
+  catch(e){ say("Could not reset", true); }
+};
+$("goalIn").onfocus = ()=>{ editingGoal = true; };
+$("goalIn").onblur = ()=>{ editingGoal = false; };
+$("titleIn").onfocus = ()=>{ editingGoal = true; };
+$("titleIn").onblur = ()=>{ editingGoal = false; };
+$("goalIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
+$("titleIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
+
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>
