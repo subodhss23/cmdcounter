@@ -1,4 +1,4 @@
-# Technical Design — 148_redhat_cmd_counter
+# Technical Design — cmdcounter
 
 ## 1. Purpose
 
@@ -486,7 +486,7 @@ typo) counts **0** — the exact production symptom.
 
 ```ini
 [Unit]
-Description=RedHat command counter 148 (port 7777)
+Description=cmdcounter (port 7777)
 After=network-online.target
 Wants=network-online.target
 

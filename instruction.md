@@ -1,4 +1,4 @@
-# Instructions — 148_redhat_cmd_counter
+# Instructions — cmdcounter
 
 ## What this app does
 
@@ -31,7 +31,7 @@ browser.
 Copy this folder to the Linux host, then:
 
 ```bash
-cd 148_redhat_cmd_counter
+cd cmdcounter
 chmod +x start.sh
 ./start.sh
 ```
@@ -208,7 +208,7 @@ Re-copying the whole folder overwrites `state.json` on the box with your
 local copy (usually count 0). Back it up first — or copy only changed files:
 
 ```bash
-scp 148_redhat_cmd_counter/hook.sh almalinux@192.168.0.32:~/148_redhat_cmd_counter/
+scp cmdcounter/hook.sh almalinux@192.168.0.32:~/cmdcounter/
 ```
 
 Then on the box: `sudo cp hook.sh /etc/profile.d/cmdcount.sh` (or re-run

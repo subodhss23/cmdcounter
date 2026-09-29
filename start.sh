@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 148_redhat_cmd_counter / start.sh - does everything on any systemd Linux
+# cmdcounter / start.sh - does everything on any systemd Linux
 # (RedHat/Alma/Rocky first-class; Debian/Ubuntu, Arch, Alpine, openSUSE too).
 #
 #   ./start.sh                    start (or restart) server + install bash hook (nohup mode)
@@ -92,7 +92,7 @@ install_service_unit() {
   unit="$SYSTEMD_UNIT_DIR/$SERVICE_NAME.service"
   $SUDO tee "$unit" >/dev/null <<EOF
 [Unit]
-Description=RedHat command counter 148 (port $PORT)
+Description=cmdcounter (port $PORT)
 After=network-online.target
 Wants=network-online.target
 
@@ -257,7 +257,7 @@ fi
 
 # ---------------------------------------------------------------- stop ---
 if [ "${STOP_ONLY:-0}" = "1" ]; then
-  echo "Stopping redhat-cmd-counter"
+  echo "Stopping cmdcounter"
   if [ -f "$SYSTEMD_UNIT_DIR/$SERVICE_NAME.service" ]; then
     $SUDO $SYSTEMCTL stop "$SERVICE_NAME" >/dev/null 2>&1 || true
     info "service   : stopped $SERVICE_NAME"
@@ -267,7 +267,7 @@ if [ "${STOP_ONLY:-0}" = "1" ]; then
 fi
 
 # --------------------------------------------------------------- common ---
-echo "RedHat command counter setup"
+echo "cmdcounter setup"
 info "directory : $APP_DIR"
 
 IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)

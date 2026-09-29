@@ -1,7 +1,6 @@
-# 148_redhat_cmd_counter
+# cmdcounter
 
-Lightweight command counter for RedHat / AlmaLinux / Rocky — and most other
-systemd Linux distros (Debian/Ubuntu, Arch, Alpine, openSUSE).
+Lightweight command counter for Linux.
 Counts every command you type in bash, shows progress to a goal on a web page.
 
 ```
@@ -14,10 +13,10 @@ Dashboard: 128 motivational quotes and 20 dark chase colors rotating every
 25 commands, Seed → Mythic rank ladder, sets-of-25 journey map, dark/light
 themes.
 
-## Install (on the RedHat box)
+## Install (on the Linux box)
 
 ```bash
-cd 148_redhat_cmd_counter
+cd cmdcounter
 chmod +x start.sh
 ./start.sh
 ```
@@ -70,7 +69,7 @@ Re-copying the whole folder overwrites `state.json` on the box with your
 local copy (usually count 0) — back it up first, or copy only changed files:
 
 ```bash
-scp 148_redhat_cmd_counter/hook.sh almalinux@192.168.0.32:~/148_redhat_cmd_counter/
+scp cmdcounter/hook.sh almalinux@192.168.0.32:~/cmdcounter/
 ```
 
 Then on the box: `sudo cp hook.sh /etc/profile.d/cmdcount.sh` (or re-run

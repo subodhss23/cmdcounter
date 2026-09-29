@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""148_redhat_cmd_counter - lightweight command counter for any systemd Linux.
+"""cmdcounter - lightweight command counter for any systemd Linux.
 
 Stdlib only. Listens on 0.0.0.0:7777.
 Counts every interactive bash command (reported by the shell hook),
@@ -163,7 +163,7 @@ def reset():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "redhat-cmdcount/1.0"
+    server_version = "cmdcount/1.0"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
@@ -268,7 +268,7 @@ def main():
             save_state()
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     httpd.daemon_threads = True
-    print("redhat-cmd-counter listening on http://%s:%d" % (HOST, PORT))
+    print("cmdcounter listening on http://%s:%d" % (HOST, PORT))
     print("  state : %s" % STATE_FILE)
     print("  goal  : %d" % _state["goal"])
     print("  count : %d" % _state["count"])

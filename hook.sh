@@ -1,5 +1,5 @@
 #!/bin/bash
-# 148_redhat_cmd_counter - bash hook.
+# cmdcounter - bash hook.
 # Installed as /etc/profile.d/cmdcount.sh by start.sh (bash only).
 # Counts every interactive command by diffing `history 1` in PROMPT_COMMAND,
 # POSTs to http://127.0.0.1:7777 in background so prompt never blocks.
