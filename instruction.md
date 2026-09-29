@@ -87,7 +87,7 @@ shows:
 | Field note | a new motivational quote + author every 33 commands |
 | Rank | Seed → Mythic ladder, `Rank up` toasts (no on-screen rank row) |
 | Progress bar | new dark chase color every 33 commands with a ding (20 colors, shared by counter, `to go`, bar, pips, set bar), milestone ticks at 25/50/75% that light up + toast when crossed, gold finish flag |
-| Sets | `Sets 25/40` journey map — gold pips per closed set, current pip filling darker with each command, `Set 26 · 12/25` plus `13 more to close it` |
+| Sets | `Sets 19/31` journey map — gold pips per closed set, current pip filling darker with each command, `Set 20 · 10/33` plus `23 more to close it` |
 | Stat row | Percent, Remaining, Counted, Status — plus session time and last-command age |
 | Live pill | green dot = server reachable; grey + "Offline" = stopped |
 | Sun/moon button | toggles dark / light theme (remembered in that browser) |

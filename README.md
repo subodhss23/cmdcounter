@@ -10,7 +10,7 @@ Counts every command you type in bash, shows progress to a goal on a web page.
 Stdlib Python only. Port `7777`. One server, bash hook.
 
 Dashboard: 128 motivational quotes and 20 dark chase colors rotating every
-33 commands (with a ding), Seed → Mythic rank ladder, sets-of-25 journey
+33 commands (with a ding), Seed → Mythic rank ladder, sets-of-33 journey
 map, dark/light themes.
 
 ## Install (on the Linux box)

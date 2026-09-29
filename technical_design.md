@@ -319,9 +319,9 @@ first visit, applied pre-paint so there is no flash).
   Granary → Redwood → Legend (10%/tier), Mythic at 100%. There is no
   on-screen rank row; tiers surface only as `Rank up — X` toasts
   (milestone toasts win ties; drops stay silent).
-- **Sets**: the 25-command sprint — `Sets 25/40` header, a pip journey map
+- **Sets**: the 33-command sprint — `Sets 19/31` header, a pip journey map
   (gold done, gradient-filled current pip whose darkness grows with each
-  command, dim todo), `Set 26 · 12/25` plus `13 more to close it` and a
+  command, dim todo), `Set 20 · 10/33` plus `23 more to close it` and a
   thin set bar. Pips rebuild only when the done/total shape changes;
   density tiers shrink pips past 40 and 100 sets so huge goals still fit
   one page. Set-close toasts yield to milestone/rank toasts.

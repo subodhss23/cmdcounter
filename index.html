@@ -198,7 +198,7 @@ try{
   .stat .v.small{font-size:.9rem;font-weight:600}
   .stat.done .v{color:var(--success)}
 
-  /* ---- sets: the 25-command sprint inside the marathon ---- */
+  /* ---- sets: the 33-command sprint inside the marathon ---- */
   .sets{background:var(--panel);border:1px solid var(--line);border-radius:14px;
     padding:14px 16px;margin-top:10px}
   .sets-head{display:flex;align-items:baseline;justify-content:space-between}
@@ -347,11 +347,11 @@ try{
     <div class="stat"><div class="k">Status</div><div class="v small" id="sStatus">–</div></div>
   </section>
 
-  <section class="sets" aria-label="Sets of 25 commands">
-    <div class="sets-head"><span class="k">Sets</span><span id="setsCount">25/40</span></div>
-    <div class="pips" id="pips"><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip now" style="background:linear-gradient(90deg, var(--band) 48%, var(--track) 48%)"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
-    <div class="setnow"><span id="setLabel">Set 26 · 12/25</span><span id="setMore">13 more to close it</span></div>
-    <div class="setbar"><i id="setFill" style="width:48%"></i></div>
+  <section class="sets" aria-label="Sets of 33 commands">
+    <div class="sets-head"><span class="k">Sets</span><span id="setsCount">19/31</span></div>
+    <div class="pips" id="pips"><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip done"></i><i class="pip now" style="background:linear-gradient(90deg, var(--band) 30.3%, var(--track) 30.3%)"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
+    <div class="setnow"><span id="setLabel">Set 20 · 10/33</span><span id="setMore">23 more to close it</span></div>
+    <div class="setbar"><i id="setFill" style="width:30.3%"></i></div>
   </section>
 
   <p class="meta"><span id="sessTime">Session –</span><span class="sep-dot"></span><span id="lastActive">Last command –</span></p>
@@ -688,16 +688,16 @@ function render(s){
   if(!fired && lastTier !== null && rk.tier > lastTier){ toast("Rank up — " + rk.name); fired = true; }
   lastTier = rk.tier;
   lastPct = pct;
-  /* sets: the 25-command sprint (short-term goal inside the marathon) */
-  const SET = Math.min(25, s.goal);
+  /* sets: the 33-command sprint (short-term goal inside the marathon) */
+  const SET = Math.min(33, s.goal);
   const totalSets = Math.max(1, Math.ceil(s.goal / SET));
-  const doneSets = Math.min(totalSets, Math.floor(s.count / SET));
+  const doneSets = s.complete ? totalSets : Math.min(totalSets, Math.floor(s.count / SET));
   const inSet = s.complete ? SET : (s.count % SET);
   const setNo = Math.min(totalSets, doneSets + 1);
   $("setsCount").textContent = doneSets + "/" + totalSets;
   $("setLabel").textContent = "Set " + setNo + " · " + inSet + "/" + SET;
   $("setMore").textContent = s.complete ? "all sets closed" : ((SET - inSet) + " more to close it");
-  $("setFill").style.width = (inSet / SET * 100) + "%";
+  $("setFill").style.width = (Math.round(inSet / SET * 1000) / 10) + "%";
   const sig = totalSets + ":" + doneSets + ":" + s.complete;
   if(sig !== lastPipsSig){
     lastPipsSig = sig;
