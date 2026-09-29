@@ -13,8 +13,8 @@ open from any machine on your network:
 - You type normally in bash. Every Enter = +1.
 - The page at `http://192.168.0.32:7777` shows the big `count / goal`,
   the remaining gap, a motivational field note (128 real quotes, a new one
-  every 25 commands), a progress bar that changes into a new dark color
-  every 25 commands, rank titles to chase, and a `Goal reached` note when
+  every 33 commands), a progress bar that changes into a new dark color
+  every 33 commands (with a ding), rank titles to chase, and a `Goal reached` note when
   you arrive. Sun/moon button switches dark and light themes.
 - You can change the goal (default `1000`) any time in the page — no
   restart. A Reset button zeroes the counter.
@@ -84,9 +84,9 @@ shows:
 | Big `10 / 1000` | commands entered so far / goal |
 | `363 to go` block | remaining — the gap you're closing |
 | Title (eyebrow) | your challenge name — editable in Settings |
-| Field note | a new motivational quote + author every 25 commands |
+| Field note | a new motivational quote + author every 33 commands |
 | Rank | Seed → Mythic ladder, `Rank up` toasts (no on-screen rank row) |
-| Progress bar | new dark chase color every 25 commands (20 colors, shared by counter, `to go`, bar, pips, set bar), milestone ticks at 25/50/75% that light up + toast when crossed, gold finish flag |
+| Progress bar | new dark chase color every 33 commands with a ding (20 colors, shared by counter, `to go`, bar, pips, set bar), milestone ticks at 25/50/75% that light up + toast when crossed, gold finish flag |
 | Sets | `Sets 25/40` journey map — gold pips per closed set, current pip filling darker with each command, `Set 26 · 12/25` plus `13 more to close it` |
 | Stat row | Percent, Remaining, Counted, Status — plus session time and last-command age |
 | Live pill | green dot = server reachable; grey + "Offline" = stopped |

@@ -302,12 +302,12 @@ first visit, applied pre-paint so there is no flash).
 - **Hero**: editable dashboard title as eyebrow (from `state.title`), giant
   `count/goal` opposite a big `remaining` block — the gap being closed.
 - **Field note**: a serif-italic motivational quote keyed to
-  `floor(count/25) % 128` — 128 real, attributed quotes (perseverance,
+  `floor(count/33) % 128` — 128 real, attributed quotes (perseverance,
   repetition, mastery, computers, automation, experimenting, moving fast,
-  obsession with one thing), so every 25 commands brings a fresh push,
+  obsession with one thing), so every 33 commands brings a fresh push,
   with a small-caps author line. (An earlier `Field note · N / 128`
   kicker was removed for whitespace; the rotation is unchanged.)
-- **Chase colors**: every 25 commands (`floor(count/25)`) also rotates the
+- **Chase colors**: every 33 commands (`floor(count/33)`) also rotates the
   big count, `to go` number, bar fill (+ glow), percent, color name, set
   bar, and all pips through 20 dark tones — all saturated darks, no
   whites/yellows/pastels — fading over 0.5 s, so there is always a next
@@ -341,7 +341,10 @@ first visit, applied pre-paint so there is no flash).
   outside closes without saving; success auto-closes. Inline message line
   clears after 2.6 s.
 - **Polling**: `fetch("/api/state", {cache:"no-store"})` every 2 s. On a
-  count change the number eases up via a 650 ms tween; crossing into
+  count change the number eases up via a 650 ms tween; crossing into a new
+  33-band also plays a small Web Audio ding (880 Hz sine, 0.5 s, no audio
+  files — the context unlocks on first click/keypress, silent until then);
+  crossing into
   complete fires a confetti burst (once per transition, never on load).
   Reduced-motion users get instant state changes throughout.
 - **Focus guard**: the goal/title inputs are only overwritten by a poll

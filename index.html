@@ -128,7 +128,7 @@ try{
   }
   .left-block .k{margin-top:6px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
 
-  /* field-note quote — a new line every 25 */
+  /* field-note quote — a new line every 33 */
   .quoteblock{margin-top:12px;padding-left:14px;border-left:2px solid var(--gold);min-height:44px}
   #cheer{
     margin-top:4px;font-family:Georgia,"Times New Roman",serif;font-style:italic;
@@ -322,8 +322,8 @@ try{
   </div>
 
   <div class="quoteblock">
-    <p id="cheer">&ldquo;I have nothing in common with lazy people who blame others for their lack of success.&rdquo;</p>
-    <div id="cheerAuthor">&mdash; Kobe Bryant</div>
+    <p id="cheer">&ldquo;The fight is won or lost far away from witnesses &mdash; behind the lines, in the gym, and out there on the road, long before I dance under those lights.&rdquo;</p>
+    <div id="cheerAuthor">&mdash; Muhammad Ali</div>
   </div>
 
   <div class="phead"><span>Progress</span><span><span id="pct">–</span><span class="pdot"> · </span><span id="colName">–</span></span></div>
@@ -381,7 +381,7 @@ try{
 <script>
 const $ = id => document.getElementById(id);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let lastCount = null, lastComplete = null, lastPct = null, lastTier = null, lastSets = null, lastPipsSig = "", editingGoal = false, displayed = null;
+let lastCount = null, lastComplete = null, lastPct = null, lastTier = null, lastSets = null, lastBand = null, lastPipsSig = "", editingGoal = false, displayed = null;
 const fmt = n => (n===null||n===undefined) ? "-" : Number(n).toLocaleString();
 
 /* ---------- theme (dark / light), remembered per browser ---------- */
@@ -399,11 +399,11 @@ paintThemeBtn();
 $("themeBtn").onclick = toggleTheme;
 
 /* chase colors: 20 DARK tones sequenced for maximum contrast between
-   neighbours — every 25 commands the whole page jumps to an obviously
+   neighbours — every 33 commands the whole page jumps to an obviously
    different color. [hex, name] pairs. */
 const COLORS = [["#c2410c","Ember"],["#1d4ed8","Royal"],["#166534","Forest"],["#a21caf","Magenta"],["#5b3a1e","Chocolate"],["#0f766e","Teal"],["#b91c1c","Crimson"],["#1e3a8a","Navy"],["#4d7c0f","Olive"],["#7e22ce","Violet"],["#92400e","Bronze"],["#0c4a6e","Ocean"],["#be123c","Rose"],["#334155","Slate"],["#8a3b12","Rust"],["#4338ca","Indigo"],["#b45309","Copper"],["#4a044e","Aubergine"],["#0f3d2e","Pine"],["#881337","Burgundy"]];
 
-/* ---------- field notes: 128 quotes, a new one every 25 commands ---------- */
+/* ---------- field notes: 128 quotes, a new one every 33 commands ---------- */
 const QUOTES = [
 ["Never give in — never, never, never, never, in nothing great or small, large or petty, never give in except to convictions of honour and good sense.", "Winston Churchill"],
 ["I have not failed. I've just found 10,000 ways that won't work.", "Thomas Edison"],
@@ -576,6 +576,31 @@ function burst(){
 }
 
 let toastTimer = null;
+/* small ding (Web Audio, no files) when a new 33-band is crossed.
+   Browsers start audio suspended until the first click/keypress. */
+let audioCtx = null;
+function ensureAudio(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+  }catch(e){}
+}
+["pointerdown", "keydown"].forEach(ev=>document.addEventListener(ev, ensureAudio));
+function ding(){
+  try{
+    ensureAudio();
+    if(!audioCtx || audioCtx.state !== "running") return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(880, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + 0.55);
+  }catch(e){}
+}
 function toast(msg){
   const el = $("toast");
   el.textContent = msg;
@@ -614,11 +639,13 @@ function render(s){
   $("goal").textContent = fmt(s.goal);
   $("goalEnd").textContent = fmt(s.goal);
   const pct = Math.max(0, Math.min(100, s.percent));
-  /* every 25 commands: new quote + new chase color (dark only) */
-  const band = Math.floor(s.count / 25);
+  /* every 33 commands: new quote + new chase color (dark only) */
+  const band = Math.floor(s.count / 33);
   const qi = band % QUOTES.length;
   const col = COLORS[band % COLORS.length][0];
   const cname = COLORS[band % COLORS.length][1];
+  if(lastBand !== null && band > lastBand){ ding(); }
+  lastBand = band;
   $("count").style.color = col;
   $("count").style.textShadow = "0 0 22px " + col + "66";
   $("fill").style.background = col;
