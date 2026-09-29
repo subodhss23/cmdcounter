@@ -307,6 +307,7 @@ try{
     <div class="top-right">
       <span class="status"><span id="dot"></span><span id="liveText">Live</span></span>
       <button id="themeBtn" class="iconbtn" type="button" title="Toggle light / dark" aria-label="Toggle light and dark mode">&#9788;</button>
+      <button id="soundBtn" class="iconbtn" type="button" title="Ding on/off (click to test sound)" aria-label="Toggle band-crossing sound">&#9834;</button>
       <button id="gearBtn" class="iconbtn" type="button" title="Settings" aria-label="Settings">&#9881;</button>
     </div>
   </header>
@@ -577,30 +578,54 @@ function burst(){
 
 let toastTimer = null;
 /* small ding (Web Audio, no files) when a new 33-band is crossed.
-   Browsers start audio suspended until the first click/keypress. */
-let audioCtx = null;
+   Browsers start audio suspended until the first click/keypress; a ding
+   that fires while suspended is remembered and played on unlock. */
+let audioCtx = null, pendingDing = false;
+let muted = false;
+try{ muted = localStorage.getItem("cc148-muted") === "1"; }catch(e){}
 function ensureAudio(){
   try{
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === "suspended") audioCtx.resume();
+    if(audioCtx.state === "suspended"){
+      audioCtx.resume().then(()=>{
+        if(pendingDing && !muted){ pendingDing = false; playDing(); }
+      }).catch(()=>{});
+    }
   }catch(e){}
 }
 ["pointerdown", "keydown"].forEach(ev=>document.addEventListener(ev, ensureAudio));
+function playDing(){
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(880, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.55);
+}
 function ding(){
+  if(muted) return;
   try{
     ensureAudio();
-    if(!audioCtx || audioCtx.state !== "running") return;
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(880, t);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(t); o.stop(t + 0.55);
+    if(!audioCtx || audioCtx.state !== "running"){ pendingDing = true; return; }
+    playDing();
   }catch(e){}
 }
+function paintSoundBtn(){
+  $("soundBtn").style.opacity = muted ? ".45" : "1";
+  $("soundBtn").style.textDecoration = muted ? "line-through" : "none";
+  $("soundBtn").setAttribute("aria-pressed", muted ? "false" : "true");
+}
+function toggleSound(){
+  muted = !muted;
+  try{ localStorage.setItem("cc148-muted", muted ? "1" : "0"); }catch(e){}
+  paintSoundBtn();
+  if(!muted){ ensureAudio(); ding(); } /* test ding: plays now, or pends until unlock */
+}
+paintSoundBtn();
+$("soundBtn").onclick = toggleSound;
 function toast(msg){
   const el = $("toast");
   el.textContent = msg;

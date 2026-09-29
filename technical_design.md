@@ -346,6 +346,9 @@ first visit, applied pre-paint so there is no flash).
   files — the context unlocks on first click/keypress, silent until then);
   crossing into
   complete fires a confetti burst (once per transition, never on load).
+  A ding that fires while audio is still suspended is remembered and played
+  on unlock; the speaker button toggles/mutes (remembered) and doubles as a
+  test button — if it makes no sound, check system volume and tab mute.
   Reduced-motion users get instant state changes throughout.
 - **Focus guard**: the goal/title inputs are only overwritten by a poll
   while the modal is closed and unfocused, so typing is never fought by

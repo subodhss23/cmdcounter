@@ -92,6 +92,7 @@ shows:
 | Live pill | green dot = server reachable; grey + "Offline" = stopped |
 | Sun/moon button | toggles dark / light theme (remembered in that browser) |
 | Gear button | opens Settings popup: Title, Goal, Save, Reset (`S` also opens it) |
+| Speaker button | ding on/off — click it once to test sound (also unlocks audio); choice remembered |
 
 ## 4. Set the title and goal
 
