@@ -88,31 +88,45 @@ shows:
 | Rank | Seed → Mythic ladder, `Rank up` toasts (no on-screen rank row) |
 | Progress bar | new dark chase color every 33 commands with a ding (20 colors, shared by counter, `to go`, bar, pips, set bar), milestone ticks at 25/50/75% that light up + toast when crossed, gold finish flag |
 | Sets | `Sets 19/31` journey map — gold pips per closed set, current pip filling darker with each command, `Set 20 · 10/33` plus `23 more to close it` |
-| Stat row | Percent, Remaining, Counted, Status — plus session time and last-command age |
+| Stat row | Percent, Remaining, Counted, Status |
 | Live pill | green dot = server reachable; grey + "Offline" = stopped |
 | Sun/moon button | toggles dark / light theme (remembered in that browser) |
 | Gear button | opens Settings popup: Title, Goal, Save, Reset (`S` also opens it) |
 | Speaker button | ding on/off — click it once to test sound (also unlocks audio); choice remembered |
-| Stopwatch (bottom) | counts up your working time — `start` / `pause` / `reset` |
+| Bottom line | stopwatch on the left, `start` / `pause` / `reset` in the middle, "Last command 2m ago" on the right |
 
 ### The stopwatch
 
-The thin row at the very bottom of the page. It counts up, and it is on
-purpose the quietest thing on the screen.
+The bottom row of the page, in one line:
 
-| Button | What it does |
-|---|---|
-| `start` | starts, or resumes after a pause |
-| `pause` | freezes it; the time so far is kept |
-| `reset` | back to `0m` and stopped |
+```
+● 1h 44m                 [ pause ]  [ reset ]              Last command 2m ago
+```
+
+- **Left** — the dot and the elapsed time.
+- **Middle** — the controls. Which buttons are there depends on the state:
+
+  | State | Buttons | How it looks |
+  |---|---|---|
+  | stopped | `start` `pause` `reset` | dot grey, `start` outlined, other two dimmed |
+  | **running** | `pause` `reset` | dot green and breathing, time bright, `pause` filled green |
+  | paused | `start` `pause` `reset` | dot gold, `start` outlined, `pause` dimmed, `reset` outlined |
+
+- **Right** — how long ago the last command was counted.
 
 Things worth knowing:
 
-- **It shows whole minutes only** — `1h 24m`, `45m`, `0m`. No seconds. A
-  number ticking every second on a screen you glance at all day is noise. The
+- **`start` disappears while it is running.** There is no second press on it
+  — while the clock runs you get `pause` and `reset`, and nothing else.
+  Press `pause` to freeze it, `reset` to zero it. `start` comes back on
+  pause, and it resumes from where it stopped rather than starting over.
+- **You can always tell it is running**, even though there are no seconds:
+  the dot pulses a soft ring once every 2.6 seconds, the time goes bright,
+  and the `pause` button is filled in. Any one of those is enough.
+- **It shows whole minutes only** — `1h 24m`, `45m`, `0m`, `2d 3h`. The
   exact time is in the tooltip if you hover over it.
-- **The dot is the state**: grey = stopped, green = running, gold = paused.
-  Buttons grey out when they would do nothing.
+- **The pulse can be turned off** by your OS "reduce motion" setting; the
+  dot then shows a static ring instead of breathing.
 - **It is not automatic.** It does not start when the server starts, and it
   keeps running if you close the page — that is the point, you are not meant
   to babysit a tab. Start it when you sit down to work.
@@ -120,6 +134,8 @@ Things worth knowing:
   touch the stopwatch, and vice versa.
 - **It survives a restart.** The server can be stopped and started without
   losing the time.
+
+
 
 ## 4. Set the title and goal
 

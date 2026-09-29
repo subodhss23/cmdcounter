@@ -382,12 +382,18 @@ first visit, applied pre-paint so there is no flash).
 - **Gap bar**: band-colored fill with a soft shine sweep, milestone ticks
   at 25/50/75% that ignite gold with a ping ripple plus a toast when crossed,
   a 0…goal scale, a separate large percent readout, and a gold finish flag.
-- **Stat row (4)**: Percent, Remaining, Counted, Status — plus a quiet
-  session line (`Session 2h 14m · Last command just now`) derived from the
-  snapshot's elapsed/idle seconds.
-- **Stopwatch**: a thin hairline row pinned to the bottom of the page —
-  a 7 px state dot, a small-caps `STOPWATCH` label, the time, and three
-  quiet text buttons (`start` / `pause` / `reset`). It is deliberately the
+- **Stat row (4)**: Percent, Remaining, Counted, Status.
+- **Bottom line**: one row in three zones — stopwatch hard left, its
+  controls dead centre, last-command age hard right. Built as
+  `grid-template-columns:1fr auto 1fr`, so the buttons are centred on the
+  page itself rather than in the space left over between two variable-width
+  text items; they stay put as the time changes from `9m` to `1h 24m` and
+  the age string from `just now` to `2m ago`.
+  The old separate `Session 2h 14m · Last command just now` line was
+  removed — the stopwatch now owns the elapsed-time read-out, and showing
+  both was two clocks for one question.
+- **Stopwatch**: the left zone is a 7 px state dot plus the elapsed time,
+  with `start` / `pause` / `reset` in the centre zone. Deliberately the
   least prominent element on the screen: no card, no fill, no glow, no
   animation, and no seconds anywhere in the display.
   - The time is formatted to whole minutes (`1h 24m`, `45m`, `0m`,
@@ -400,16 +406,36 @@ first visit, applied pre-paint so there is no flash).
     permanently-open tab from doing layout work forever.
   - Exact `H:MM:SS` is kept in the `title` attribute for anyone who wants
     to hover — available without being visible.
-  - State is carried by the dot colour (grey idle, olive running, gold
-    paused) and by which buttons are enabled: `start` is disabled while
-    running, `pause` unless running, `reset` while idle. The DOM is only
-    touched when the state string changes, not on every poll.
+  - **Running has to be legible without seconds.** Suppressing seconds
+    removes the one thing that made a stopwatch look alive, so three
+    independent signals carry the state instead:
+    1. the dot **breathes** — one slow expanding ring every 2.6 s
+       (`::after` + `@keyframes swring`), the standard "live" cue, sized at
+       7 px so it reads peripherally and can be ignored. It is disabled and
+       replaced by a static ring under `prefers-reduced-motion`;
+    2. the elapsed time goes from `--faint` to `--text`;
+    3. `pause` **fills** with `--olive` while running, so the eye lands on
+       the live control rather than having to read the dot.
+    Static states stay static: grey dot when stopped, gold dot when paused.
+  - **`start` is removed from the DOM while running** (`hidden`, not
+    `disabled`). A greyed-out button still looks pressable and still sits in
+    the tab order, so a second press is still possible in spirit; `hidden`
+    makes the button unclickable *and* unfocusable, so the only choices
+    offered while the clock runs are `pause` and `reset`. It comes back on
+    pause. `.footbar button[hidden]{display:none}` guards against any future
+    `display` rule silently defeating the attribute.
+  - Otherwise: `pause` is disabled unless running, `reset` while idle. All
+    of this is applied only when the state string changes, not every poll.
   - Buttons post `/api/timer` and re-render from the response, so what you
     see is the server's answer, never a local guess. A failed request is
     swallowed and the next poll corrects the display.
   - Deliberately not driven by the page: the timer is anchored to a
     server-side wall clock, so it keeps running when the tab is closed and
     survives a server restart.
+  - `fmtDur` was removed with the session line; `fmtClock` covers the only
+    duration left on the page. `elapsed_seconds` is still in the snapshot
+    for `/api` consumers.
+
 - **Controls (settings modal)**: title field, goal field, `SAVE` (Enter in
   either field also submits) and `RESET` (with `confirm()`) live in a popup
   behind the gear button — no always-visible control bar. Save posts

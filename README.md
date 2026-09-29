@@ -41,9 +41,13 @@ http://localhost:7777   (on the box itself)
 
 - **Goal**: gear popup → type a number → Save (or `GOAL=2000 ./start.sh`)
 - **Reset**: Reset button in UI
-- **Stopwatch**: `start` / `pause` / `reset` in the thin row at the bottom.
-  Whole minutes only, no seconds, no animation — it is meant to sit at the
-  edge of vision. Persisted, survives restarts, independent of the counter.
+- **Stopwatch**: bottom line of the page — time on the left, controls in the
+  middle, "last command 2m ago" on the right. Whole minutes only (no
+  seconds), but while it runs the dot breathes, the time goes bright and
+  `pause` fills, so "is it going?" never needs the seconds to answer.
+  `start` is removed while running, so it cannot be pressed twice — the only
+  options are `pause` and `reset`. Persisted, survives restarts, independent
+  of the counter.
 - **Stop**: `./start.sh --stop`
 - **Server only, no hook**: `./start.sh --no-hook`
 - **Other port**: `PORT=8080 ./start.sh`

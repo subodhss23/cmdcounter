@@ -221,8 +221,6 @@ try{
   #setFill{display:block;height:100%;width:0;background:var(--band);border-radius:999px;
     transition:width .5s cubic-bezier(.25,.9,.3,1),background-color .5s}
 
-  .meta{margin-top:10px;text-align:center;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
-  .meta .sep-dot{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--faint);margin:0 10px;vertical-align:middle;opacity:.7}
 
   #doneMsg{
     display:none;margin-top:12px;padding:15px 18px;border-radius:14px;text-align:center;
@@ -231,38 +229,66 @@ try{
   }
   #doneMsg.on{display:block}
 
-  /* ---------- stopwatch ----------
-     Deliberately the quietest thing on the page: hairline rule, no card, no
-     glow, no animation. The dot colour carries the state, and the digits are
-     only rewritten when the minute actually changes, so nothing ticks. */
-  .stopwatch{
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-    margin-top:22px;padding-top:13px;border-top:1px solid var(--line);
+  /* ---------- bottom line ----------
+     One row, three zones: stopwatch hard left, its controls dead centre,
+     last-command hard right. A 3-column grid (1fr auto 1fr) centres the
+     buttons on the page itself rather than in the leftover space, so they
+     stay put as the time and the "ago" string change width. */
+  .footbar{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    gap:14px;margin-top:16px;font-size:12px;color:var(--faint);
+    font-variant-numeric:tabular-nums;
   }
-  .stopwatch .swdot{
+  .foot-left{
+    justify-self:start;display:flex;align-items:center;gap:8px;min-width:0;
+  }
+  .foot-mid{justify-self:center;display:flex;gap:6px}
+  .foot-right{justify-self:end;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .footbar .swdot{
     width:7px;height:7px;border-radius:50%;background:var(--faint);
-    flex:0 0 auto;transition:background .25s;
+    flex:0 0 auto;position:relative;transition:background .25s;
   }
-  .stopwatch.running .swdot{background:var(--olive)}
-  .stopwatch.paused .swdot{background:var(--gold)}
-  .stopwatch .swlabel{
-    font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);
+  .footbar.running .swdot{background:var(--olive)}
+  .footbar.paused .swdot{background:var(--gold)}
+  /* Running has to be obvious even though the digits only move once a
+     minute, so the dot breathes: one slow ring per cycle, the universal
+     "this is live" signal, and cheap enough to ignore. */
+  .footbar.running .swdot::after{
+    content:"";position:absolute;inset:-2px;border-radius:50%;
+    border:1px solid var(--olive);animation:swring 2.6s ease-out infinite;
   }
-  .stopwatch .swtime{
-    font-size:15px;font-weight:600;color:var(--faint);
-    font-variant-numeric:tabular-nums;letter-spacing:.03em;
-    transition:color .25s;
+  @keyframes swring{
+    0%{transform:scale(.7);opacity:.85}
+    70%,100%{transform:scale(2.2);opacity:0}
   }
-  .stopwatch.running .swtime{color:var(--muted)}
-  .stopwatch .swbtns{margin-left:auto;display:flex;gap:6px}
-  .stopwatch button{
+  @media (prefers-reduced-motion: reduce){
+    .footbar.running .swdot::after{animation:none;opacity:.35;transform:scale(1.5)}
+  }
+  .footbar .swtime{
+    font-size:13px;font-weight:600;color:var(--faint);
+    letter-spacing:.03em;transition:color .25s;
+  }
+  .footbar.running .swtime{color:var(--text)}
+  .footbar button{
     background:transparent;border:1px solid var(--line);color:var(--faint);
     font-family:inherit;font-size:11px;letter-spacing:.08em;
-    padding:5px 11px;border-radius:8px;cursor:pointer;
-    transition:color .15s,border-color .15s;
+    padding:4px 10px;border-radius:8px;cursor:pointer;
+    transition:color .15s,border-color .15s,background .15s;
   }
-  .stopwatch button:hover:not(:disabled){color:var(--muted);border-color:var(--faint)}
-  .stopwatch button:disabled{opacity:.3;cursor:default}
+  .footbar button[hidden]{display:none}
+  .footbar button:hover:not(:disabled){color:var(--muted);border-color:var(--faint)}
+  .footbar button:disabled{opacity:.3;cursor:default}
+  /* While running, pause is the live control - it fills so the eye lands on
+     it, which is the clearest "the clock is going" cue that costs no space. */
+  .footbar.running .foot-mid #swPause{
+    background:var(--olive);border-color:var(--olive);
+    color:var(--bg);font-weight:700;opacity:1;
+  }
+  .footbar.running .foot-mid #swPause:hover{color:var(--bg);border-color:var(--olive);filter:brightness(1.08)}
+  @media (max-width:460px){
+    .footbar{grid-template-columns:1fr auto;gap:8px 12px}
+    .foot-right{grid-column:1 / -1;justify-self:start}
+  }
 
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
   #confetti .cf{position:absolute;width:8px;height:12px;border-radius:2px}
@@ -325,10 +351,6 @@ try{
     .phead{margin-top:10px}
     .grid{margin-top:12px}
     .sets{margin-top:10px}
-    .meta{margin-top:8px}
-  }
-  @media (max-width:420px){
-    .stopwatch .swbtns{margin-left:0;width:100%}
   }
 </style>
 </head>
@@ -391,19 +413,18 @@ try{
     <div class="setbar"><i id="setFill" style="width:30.3%"></i></div>
   </section>
 
-  <p class="meta"><span id="sessTime">Session –</span><span class="sep-dot"></span><span id="lastActive">Last command –</span></p>
-
   <div id="doneMsg">Full harvest. A thousand strong.</div>
 
-  <div class="stopwatch idle" id="sw" role="group" aria-label="Stopwatch">
-    <span class="swdot" aria-hidden="true"></span>
-    <span class="swlabel">Stopwatch</span>
-    <span class="swtime" id="swTime">0m</span>
-    <span class="swbtns">
-      <button id="swStart" type="button">start</button>
+  <div class="footbar idle" id="sw" role="group" aria-label="Stopwatch and activity">
+    <span class="foot-left" title="Stopwatch — start, pause or reset">
+      <span class="swdot" aria-hidden="true"></span><span class="swtime" id="swTime">0m</span>
+    </span>
+    <span class="foot-mid">
+      <button id="swStart" type="button" hidden>start</button>
       <button id="swPause" type="button">pause</button>
       <button id="swReset" type="button">reset</button>
     </span>
+    <span class="foot-right" id="lastActive">Last command –</span>
   </div>
 </div>
 
@@ -690,14 +711,6 @@ function rankFor(s, pct){
   return {name: RANKS[t], lvl: "Lvl " + (t + 1), tier: t};
 }
 
-function fmtDur(sec){
-  sec = Math.max(0, Math.floor(sec || 0));
-  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
-  if(d > 0) return d + "d " + h + "h";
-  if(h > 0) return h + "h " + m + "m";
-  if(m > 0) return m + "m";
-  return "under a minute";
-}
 function fmtIdle(sec){
   sec = Math.max(0, Math.floor(sec || 0));
   if(sec < 60) return "just now";
@@ -790,7 +803,6 @@ function render(s){
     "linear-gradient(90deg, var(--band) " + (inSet / SET * 100) + "%, var(--track) " + (inSet / SET * 100) + "%)";
   if(!fired && lastSets !== null && doneSets > lastSets){ toast("Set " + doneSets + "/" + totalSets + " closed — " + cname); }
   lastSets = doneSets;
-  $("sessTime").textContent = "Session " + fmtDur(s.elapsed_seconds);
   $("lastActive").textContent = "Last command " + fmtIdle(s.idle_seconds);
   renderTimer(s.timer);
   if(!editingGoal){
@@ -826,9 +838,14 @@ function renderTimer(t){
   if(!t) return;
   if(t.status !== lastSwState){
     lastSwState = t.status;
-    $("sw").className = "stopwatch " + t.status;
-    $("swStart").disabled = (t.status === "running");
-    $("swPause").disabled = (t.status !== "running");
+    const running = (t.status === "running");
+    $("sw").className = "footbar " + t.status;
+    /* No second press on start: while the clock is running the button is
+       removed from the DOM, so it cannot be clicked or tabbed to at all.
+       `hidden` (rather than `disabled`) because a greyed-out button still
+       invites a press and still sits in the tab order. */
+    $("swStart").hidden = running;
+    $("swPause").disabled = !running;
     $("swReset").disabled = (t.status === "idle");
   }
   const txt = fmtClock(t.elapsed_seconds);
