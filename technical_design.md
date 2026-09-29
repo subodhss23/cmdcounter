@@ -417,15 +417,19 @@ first visit, applied pre-paint so there is no flash).
     3. `pause` **fills** with `--olive` while running, so the eye lands on
        the live control rather than having to read the dot.
     Static states stay static: grey dot when stopped, gold dot when paused.
-  - **`start` is removed from the DOM while running** (`hidden`, not
-    `disabled`). A greyed-out button still looks pressable and still sits in
-    the tab order, so a second press is still possible in spirit; `hidden`
-    makes the button unclickable *and* unfocusable, so the only choices
-    offered while the clock runs are `pause` and `reset`. It comes back on
-    pause. `.footbar button[hidden]{display:none}` guards against any future
-    `display` rule silently defeating the attribute.
-  - Otherwise: `pause` is disabled unless running, `reset` while idle. All
-    of this is applied only when the state string changes, not every poll.
+  - **`start` is always on screen and dims instead of vanishing.** Once the
+    clock has started, the button takes the disabled feel (`disabled` +
+    existing `:disabled` styling) rather than leaving the DOM, so the
+    layout never shifts and a second press is impossible both visually and
+    for keyboard users (disabled buttons leave the tab order). `pause` and
+    `reset` do the opposite: `hidden` until the first start, then they pop
+    into the centre zone. On pause the pause button reads `resume` and
+    re-sends `start`, which the server treats as resume. `.footbar
+    button[hidden]{display:none}` guards against any future `display` rule
+    silently defeating the attribute.
+  - Otherwise: nothing is clickable before its time — `start` ignores
+    presses while disabled, and all button visibility is applied only when
+    the state string changes, not every poll.
   - Buttons post `/api/timer` and re-render from the response, so what you
     see is the server's answer, never a local guess. A failed request is
     swallowed and the next poll corrects the display.

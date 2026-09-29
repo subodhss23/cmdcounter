@@ -45,8 +45,9 @@ http://localhost:7777   (on the box itself)
   middle, "last command 2m ago" on the right. Whole minutes only (no
   seconds), but while it runs the dot breathes, the time goes bright and
   `pause` fills, so "is it going?" never needs the seconds to answer.
-  `start` is removed while running, so it cannot be pressed twice — the only
-  options are `pause` and `reset`. Persisted, survives restarts, independent
+  `start` stays on screen and dims once started, so it cannot be pressed
+  twice — `pause` (which reads `resume` on pause) and `reset` pop in after
+  starting. Persisted, survives restarts, independent
   of the counter.
 - **Stop**: `./start.sh --stop`
 - **Server only, no hook**: `./start.sh --no-hook`

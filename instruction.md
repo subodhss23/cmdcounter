@@ -108,18 +108,19 @@ The bottom row of the page, in one line:
 
   | State | Buttons | How it looks |
   |---|---|---|
-  | stopped | `start` `pause` `reset` | dot grey, `start` outlined, other two dimmed |
-  | **running** | `pause` `reset` | dot green and breathing, time bright, `pause` filled green |
-  | paused | `start` `pause` `reset` | dot gold, `start` outlined, `pause` dimmed, `reset` outlined |
+  | stopped | `start` | dot grey, `start` outlined; `pause`/`reset` hidden |
+  | **running** | `start` `pause` `reset` | dot green and breathing, time bright, `start` dimmed, `pause` filled green |
+  | paused | `start` `resume` `reset` | dot gold, `start` dimmed, `resume` + `reset` outlined |
 
 - **Right** — how long ago the last command was counted.
 
 Things worth knowing:
 
-- **`start` disappears while it is running.** There is no second press on it
-  — while the clock runs you get `pause` and `reset`, and nothing else.
-  Press `pause` to freeze it, `reset` to zero it. `start` comes back on
-  pause, and it resumes from where it stopped rather than starting over.
+- **`start` is always on screen.** It never vanishes — once the clock has
+  started it dims into a disabled feel instead, so the layout never shifts
+  and it cannot be pressed twice. `pause` and `reset` pop in only after
+  `start`, and on pause the pause button reads `resume` (resuming picks up
+  where it stopped rather than starting over). Press `reset` to zero it.
 - **You can always tell it is running**, even though there are no seconds:
   the dot pulses a soft ring once every 2.6 seconds, the time goes bright,
   and the `pause` button is filled in. Any one of those is enough.

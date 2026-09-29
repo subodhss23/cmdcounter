@@ -420,9 +420,9 @@ try{
       <span class="swdot" aria-hidden="true"></span><span class="swtime" id="swTime">0m</span>
     </span>
     <span class="foot-mid">
-      <button id="swStart" type="button" hidden>start</button>
-      <button id="swPause" type="button">pause</button>
-      <button id="swReset" type="button">reset</button>
+      <button id="swStart" type="button">start</button>
+      <button id="swPause" type="button" hidden>pause</button>
+      <button id="swReset" type="button" hidden>reset</button>
     </span>
     <span class="foot-right" id="lastActive">Last command –</span>
   </div>
@@ -839,14 +839,20 @@ function renderTimer(t){
   if(t.status !== lastSwState){
     lastSwState = t.status;
     const running = (t.status === "running");
+    const started = (t.status !== "idle");
     $("sw").className = "footbar " + t.status;
-    /* No second press on start: while the clock is running the button is
-       removed from the DOM, so it cannot be clicked or tabbed to at all.
-       `hidden` (rather than `disabled`) because a greyed-out button still
-       invites a press and still sits in the tab order. */
-    $("swStart").hidden = running;
-    $("swPause").disabled = !running;
-    $("swReset").disabled = (t.status === "idle");
+    /* Start is always on screen: idle it invites the press, afterwards it
+       dims into a disabled feel instead of vanishing, so the layout never
+       shifts and it cannot be double-pressed. Pause + Reset pop in only
+       once the clock has started; on pause the pause button reads resume
+       (the server resumes via "start"). */
+    $("swStart").hidden = false;
+    $("swStart").disabled = started;
+    $("swPause").hidden = !started;
+    $("swReset").hidden = !started;
+    $("swPause").disabled = false;
+    $("swReset").disabled = false;
+    $("swPause").textContent = running ? "pause" : "resume";
   }
   const txt = fmtClock(t.elapsed_seconds);
   if(txt !== lastClock){
@@ -913,8 +919,8 @@ $("titleIn").onblur = ()=>{ editingGoal = false; };
 $("goalIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
 $("titleIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
 
-$("swStart").onclick = () => swAct("start");
-$("swPause").onclick = () => swAct("pause");
+$("swStart").onclick = () => { if(!$("swStart").disabled) swAct("start"); };
+$("swPause").onclick = () => swAct(lastSwState === "paused" ? "start" : "pause");
 $("swReset").onclick = () => swAct("reset");
 
 poll();
