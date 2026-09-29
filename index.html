@@ -231,6 +231,39 @@ try{
   }
   #doneMsg.on{display:block}
 
+  /* ---------- stopwatch ----------
+     Deliberately the quietest thing on the page: hairline rule, no card, no
+     glow, no animation. The dot colour carries the state, and the digits are
+     only rewritten when the minute actually changes, so nothing ticks. */
+  .stopwatch{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    margin-top:22px;padding-top:13px;border-top:1px solid var(--line);
+  }
+  .stopwatch .swdot{
+    width:7px;height:7px;border-radius:50%;background:var(--faint);
+    flex:0 0 auto;transition:background .25s;
+  }
+  .stopwatch.running .swdot{background:var(--olive)}
+  .stopwatch.paused .swdot{background:var(--gold)}
+  .stopwatch .swlabel{
+    font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);
+  }
+  .stopwatch .swtime{
+    font-size:15px;font-weight:600;color:var(--faint);
+    font-variant-numeric:tabular-nums;letter-spacing:.03em;
+    transition:color .25s;
+  }
+  .stopwatch.running .swtime{color:var(--muted)}
+  .stopwatch .swbtns{margin-left:auto;display:flex;gap:6px}
+  .stopwatch button{
+    background:transparent;border:1px solid var(--line);color:var(--faint);
+    font-family:inherit;font-size:11px;letter-spacing:.08em;
+    padding:5px 11px;border-radius:8px;cursor:pointer;
+    transition:color .15s,border-color .15s;
+  }
+  .stopwatch button:hover:not(:disabled){color:var(--muted);border-color:var(--faint)}
+  .stopwatch button:disabled{opacity:.3;cursor:default}
+
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
   #confetti .cf{position:absolute;width:8px;height:12px;border-radius:2px}
 
@@ -293,6 +326,9 @@ try{
     .grid{margin-top:12px}
     .sets{margin-top:10px}
     .meta{margin-top:8px}
+  }
+  @media (max-width:420px){
+    .stopwatch .swbtns{margin-left:0;width:100%}
   }
 </style>
 </head>
@@ -358,6 +394,17 @@ try{
   <p class="meta"><span id="sessTime">Session –</span><span class="sep-dot"></span><span id="lastActive">Last command –</span></p>
 
   <div id="doneMsg">Full harvest. A thousand strong.</div>
+
+  <div class="stopwatch idle" id="sw" role="group" aria-label="Stopwatch">
+    <span class="swdot" aria-hidden="true"></span>
+    <span class="swlabel">Stopwatch</span>
+    <span class="swtime" id="swTime">0m</span>
+    <span class="swbtns">
+      <button id="swStart" type="button">start</button>
+      <button id="swPause" type="button">pause</button>
+      <button id="swReset" type="button">reset</button>
+    </span>
+  </div>
 </div>
 
 <div id="confetti"></div>
@@ -745,6 +792,7 @@ function render(s){
   lastSets = doneSets;
   $("sessTime").textContent = "Session " + fmtDur(s.elapsed_seconds);
   $("lastActive").textContent = "Last command " + fmtIdle(s.idle_seconds);
+  renderTimer(s.timer);
   if(!editingGoal){
     $("goalIn").value = s.goal;
     $("titleIn").value = s.title || "";
@@ -754,6 +802,45 @@ function render(s){
   lastCount = s.count;
   if(s.complete && lastComplete === false) burst();
   lastComplete = s.complete;
+}
+
+/* ---------- stopwatch ----------
+   Minutes only. A ticking seconds column is a distraction on a page you
+   glance at all day, so the digits are formatted to whole minutes and the
+   DOM is only touched when that string actually changes - once a minute, not
+   twice a second. The exact time stays in the title attribute for hovering. */
+let lastClock = null, lastSwState = null;
+function fmtClock(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  if(d > 0) return d + "d " + h + "h";
+  if(h > 0) return h + "h " + m + "m";
+  return m + "m";
+}
+function exactHMS(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
+  return (h > 0 ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+}
+function renderTimer(t){
+  if(!t) return;
+  if(t.status !== lastSwState){
+    lastSwState = t.status;
+    $("sw").className = "stopwatch " + t.status;
+    $("swStart").disabled = (t.status === "running");
+    $("swPause").disabled = (t.status !== "running");
+    $("swReset").disabled = (t.status === "idle");
+  }
+  const txt = fmtClock(t.elapsed_seconds);
+  if(txt !== lastClock){
+    lastClock = txt;
+    $("swTime").textContent = txt;
+    $("swTime").title = exactHMS(t.elapsed_seconds) + " elapsed";
+  }
+}
+async function swAct(action){
+  try{ render(await post("/api/timer", {action: action})); }
+  catch(e){ /* offline: the next poll will redraw whatever the server has */ }
 }
 
 async function poll(){
@@ -808,6 +895,10 @@ $("titleIn").onfocus = ()=>{ editingGoal = true; };
 $("titleIn").onblur = ()=>{ editingGoal = false; };
 $("goalIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
 $("titleIn").onkeydown = e => { if(e.key === "Enter") $("save").click(); };
+
+$("swStart").onclick = () => swAct("start");
+$("swPause").onclick = () => swAct("pause");
+$("swReset").onclick = () => swAct("reset");
 
 poll();
 setInterval(poll, 2000);

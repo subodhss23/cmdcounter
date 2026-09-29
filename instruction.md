@@ -93,6 +93,33 @@ shows:
 | Sun/moon button | toggles dark / light theme (remembered in that browser) |
 | Gear button | opens Settings popup: Title, Goal, Save, Reset (`S` also opens it) |
 | Speaker button | ding on/off — click it once to test sound (also unlocks audio); choice remembered |
+| Stopwatch (bottom) | counts up your working time — `start` / `pause` / `reset` |
+
+### The stopwatch
+
+The thin row at the very bottom of the page. It counts up, and it is on
+purpose the quietest thing on the screen.
+
+| Button | What it does |
+|---|---|
+| `start` | starts, or resumes after a pause |
+| `pause` | freezes it; the time so far is kept |
+| `reset` | back to `0m` and stopped |
+
+Things worth knowing:
+
+- **It shows whole minutes only** — `1h 24m`, `45m`, `0m`. No seconds. A
+  number ticking every second on a screen you glance at all day is noise. The
+  exact time is in the tooltip if you hover over it.
+- **The dot is the state**: grey = stopped, green = running, gold = paused.
+  Buttons grey out when they would do nothing.
+- **It is not automatic.** It does not start when the server starts, and it
+  keeps running if you close the page — that is the point, you are not meant
+  to babysit a tab. Start it when you sit down to work.
+- **It is independent of the counter.** Resetting the command count does not
+  touch the stopwatch, and vice versa.
+- **It survives a restart.** The server can be stopped and started without
+  losing the time.
 
 ## 4. Set the title and goal
 
@@ -376,7 +403,7 @@ rm -f state.json cmdcount.log cmdcount.pid
 | `server.py` | Counter server (stdlib only, `:7777`) |
 | `index.html` | Dashboard (no internet needed) |
 | `hook.sh` | Bash hook source (installed as `/etc/profile.d/cmdcount.sh`) |
-| `state.json` | Saved `count` + `goal` |
+| `state.json` | Saved `count` + `goal` + `title` + stopwatch state |
 | `README.md` | Overview + quick start |
 | `instruction.md` | This file |
 | `technical_design.md` | How it works under the hood |

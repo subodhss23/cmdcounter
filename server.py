@@ -7,10 +7,11 @@ stores count + goal + title in state.json, serves a nice dashboard.
 
 Endpoints:
   GET  /            dashboard
-  GET  /api/state   {count, goal, title, percent, remaining, ...}
+  GET  /api/state   {count, goal, title, percent, remaining, timer, ...}
   POST /api/hit     body n=1 (also accepts /api/cmd for compat) -> count += n
   POST /api/goal    {goal: 1000}
   POST /api/title   {title: "My challenge"}
+  POST /api/timer   {action: "start" | "pause" | "reset"}
   POST /api/reset   -> count = 0
   GET  /healthz     {ok: true}
 """
@@ -44,6 +45,20 @@ _lock = threading.Lock()
 _state = {}
 
 
+def _default_timer():
+    """Stopwatch: accumulated seconds banked by past runs, plus the current run.
+
+    `since` is the wall clock at which the current run began, so a server
+    restart does not interrupt the stopwatch - it is persisted with the rest
+    of the state and re-read on boot.
+    """
+    return {"status": "idle", "accumulated": 0.0, "since": 0.0}
+
+
+TIMER_STATES = ("idle", "running", "paused")
+TIMER_ACTIONS = ("start", "pause", "reset")
+
+
 def _default_state():
     now = time.time()
     return {
@@ -52,7 +67,33 @@ def _default_state():
         "title": DEFAULT_TITLE,
         "started_at": now,
         "updated_at": now,
+        "timer": _default_timer(),
     }
+
+
+def normalize_timer(value):
+    t = _default_timer()
+    if isinstance(value, dict):
+        if value.get("status") in TIMER_STATES:
+            t["status"] = value["status"]
+        for key in ("accumulated", "since"):
+            try:
+                t[key] = max(0.0, float(value.get(key, 0) or 0))
+            except (TypeError, ValueError):
+                pass
+    if t["status"] == "running" and t["since"] <= 0:
+        # No anchor to count from, so there is nothing to resume.
+        t["status"] = "paused"
+    if t["status"] != "running":
+        t["since"] = 0.0
+    return t
+
+
+def _elapsed(timer, now):
+    total = timer["accumulated"]
+    if timer["status"] == "running":
+        total += max(0.0, now - timer["since"])
+    return total
 
 
 def load_state():
@@ -79,6 +120,7 @@ def load_state():
     if base["count"] < 0:
         base["count"] = 0
     base["title"] = normalize_title(base.get("title"))
+    base["timer"] = normalize_timer(base.get("timer"))
     return base
 
 
@@ -99,13 +141,15 @@ def save_state():
 
 
 def snapshot():
+    now = time.time()
     with _lock:
         count = _state["count"]
         goal = _state["goal"]
         title = _state["title"]
         started = _state["started_at"]
         updated = _state["updated_at"]
-    now = time.time()
+        timer = _state["timer"]
+        timer_elapsed = _elapsed(timer, now)
     elapsed = max(0.0, now - started)
     pct = round(min(100.0, count * 100.0 / goal), 1) if goal else 0.0
     remaining = max(0, goal - count)
@@ -125,6 +169,10 @@ def snapshot():
         "started_at": started,
         "host": host,
         "port": PORT,
+        "timer": {
+            "status": timer["status"],
+            "elapsed_seconds": int(timer_elapsed),
+        },
     }
 
 
@@ -152,6 +200,31 @@ def set_title(title):
         _state["updated_at"] = time.time()
         save_state()
     return title
+
+
+def timer_action(action):
+    """start / pause / reset the stopwatch. Idempotent and safe to repeat."""
+    if action not in TIMER_ACTIONS:
+        return None
+    now = time.time()
+    with _lock:
+        t = _state["timer"]
+        if action == "start":
+            if t["status"] != "running":
+                t["status"] = "running"
+                t["since"] = now
+        elif action == "pause":
+            if t["status"] == "running":
+                t["accumulated"] += max(0.0, now - t["since"])
+                t["status"] = "paused"
+                t["since"] = 0.0
+        else:
+            t["status"] = "idle"
+            t["accumulated"] = 0.0
+            t["since"] = 0.0
+        _state["updated_at"] = now
+        save_state()
+    return t
 
 
 def reset():
@@ -253,6 +326,14 @@ class Handler(BaseHTTPRequestHandler):
             set_title(title)
             return self._json(snapshot())
 
+        if route == "/api/timer":
+            action = str(body.get("action", "")).strip().lower()
+            if action not in TIMER_ACTIONS:
+                return self._json(
+                    {"error": "action must be start, pause or reset"}, 400)
+            timer_action(action)
+            return self._json(snapshot())
+
         if route == "/api/reset":
             reset()
             return self._json(snapshot())
@@ -273,6 +354,8 @@ def main():
     print("  goal  : %d" % _state["goal"])
     print("  count : %d" % _state["count"])
     print("  title : %s" % _state["title"])
+    print("  timer : %s (%ds)" % (_state["timer"]["status"],
+                                  int(_elapsed(_state["timer"], time.time()))))
     sys.stdout.flush()
     try:
         httpd.serve_forever(poll_interval=0.5)

@@ -41,6 +41,9 @@ http://localhost:7777   (on the box itself)
 
 - **Goal**: gear popup → type a number → Save (or `GOAL=2000 ./start.sh`)
 - **Reset**: Reset button in UI
+- **Stopwatch**: `start` / `pause` / `reset` in the thin row at the bottom.
+  Whole minutes only, no seconds, no animation — it is meant to sit at the
+  edge of vision. Persisted, survives restarts, independent of the counter.
 - **Stop**: `./start.sh --stop`
 - **Server only, no hook**: `./start.sh --no-hook`
 - **Other port**: `PORT=8080 ./start.sh`
@@ -103,10 +106,11 @@ export CMDCNT_URL=http://10.0.0.5:7777   # different server
 ## API
 
 - `GET /` → dashboard
-- `GET /api/state` → `{count, goal, percent, remaining, ...}`
+- `GET /api/state` → `{count, goal, percent, remaining, timer, ...}`
 - `POST /api/hit` → `n=1`
 - `POST /api/goal` → `{"goal": 1000}`
 - `POST /api/title` → `{"title": "My challenge"}` (dashboard heading, max 80 chars)
+- `POST /api/timer` → `{"action": "start" | "pause" | "reset"}`
 - `POST /api/reset`
 - `GET /healthz`
 

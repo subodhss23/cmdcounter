@@ -213,11 +213,16 @@ normal fork/exec of the commands themselves.
 ### 6.1 State
 
 ```json
-{ "goal": 1000, "count": 42, "title": "My challenge", "started_at": 1790624479.3, "updated_at": 1790624483.7 }
+{
+  "goal": 1000, "count": 42, "title": "My challenge",
+  "started_at": 1790624479.3, "updated_at": 1790624483.7,
+  "timer": {"status": "running", "accumulated": 0.0, "since": 1790624480.1}
+}
 ```
 
 - Loaded once at startup into memory; `threading.Lock` guards every
-  read-modify-write (`bump`, `set_goal`, `reset`, `snapshot`).
+  read-modify-write (`bump`, `set_goal`, `set_title`, `timer_action`, `reset`,
+  `snapshot`).
 - Written **atomically** on every mutation: dump to `state.json.tmp` +
   `fsync` + `os.replace`. A crash or `kill -9` mid-write can never leave a
   truncated `state.json`.
@@ -225,9 +230,12 @@ normal fork/exec of the commands themselves.
   one command behind. At human typing rates the fsync cost is irrelevant;
   surviving a power cut is worth it.
 - `load_state` is defensive: missing / malformed / wrong-typed file falls
-  back to `{goal: 1000, count: 0}` instead of refusing to boot. Unknown keys
-  are dropped, so a newer state file cannot break an older binary. `goal`
+  back to defaults instead of refusing to boot. Unknown top-level keys are
+  dropped, so a newer state file cannot break an older binary. `goal`
   is clamped to `>= 1`, `count` to `>= 0`.
+- The nested `timer` is normalised separately by `normalize_timer`, because
+  a shallow key copy is not enough for a nested object. A `state.json` from
+  before the stopwatch existed simply has no `timer` key and loads as `idle`.
 
 ### 6.2 Endpoints
 
@@ -238,7 +246,8 @@ normal fork/exec of the commands themselves.
 | `POST` | `/api/hit`, `/api/cmd` | `n=1` | Snapshot with new count. `n` clamped to `1..1000`. `/api/cmd` exists for compatibility with older hooks. |
 | `POST` | `/api/goal` | `{"goal": 1000}` | Snapshot. `400` if not an integer or outside `1..100_000_000`. |
 | `POST` | `/api/title` | `{"title": "My challenge"}` | Snapshot. `400` if not a string; stripped, truncated to 80 chars, empty falls back to the default. |
-| `POST` | `/api/reset` | — | Snapshot with `count=0` and fresh `started_at`. Goal untouched. |
+| `POST` | `/api/timer` | `{"action": "start" \| "pause" \| "reset"}` | Snapshot. `400` on any other action. |
+| `POST` | `/api/reset` | — | Snapshot with `count=0` and fresh `started_at`. Goal and timer untouched. |
 | `GET` | `/healthz` | — | `{"ok": true}`. Used by humans and by `start.sh` health checks. |
 
 Snapshot shape (`GET /api/state`, also returned by every POST):
@@ -247,16 +256,58 @@ Snapshot shape (`GET /api/state`, also returned by every POST):
 {
   "count": 10, "goal": 1000, "percent": 1.0, "remaining": 990,
   "complete": false, "elapsed_seconds": 3600, "idle_seconds": 5,
-  "started_at": 1790624479.3, "host": "alma9", "port": 7777
+  "started_at": 1790624479.3, "host": "alma9", "port": 7777,
+  "timer": {"status": "running", "elapsed_seconds": 5040}
 }
 ```
 
 Derived server-side so the page is a dumb renderer: `percent` is
-`round(min(100, count*100/goal), 1)`, `remaining` is `max(0, goal-count)`.
-Body parsing accepts both `application/json` and
-`application/x-www-form-urlencoded` (the hook sends the latter via curl),
-capped at 8 KiB. The server never receives, stores, or logs command text —
-it cannot leak what was typed because it never sees it.
+`round(min(100, count*100/goal), 1)`, `remaining` is `max(0, goal-count)`,
+`timer.elapsed_seconds` is the running total. Body parsing accepts both
+`application/json` and `application/x-www-form-urlencoded` (the hook sends
+the latter via curl), capped at 8 KiB. The server never receives, stores, or
+logs command text — it cannot leak what was typed because it never sees it.
+
+### 6.2.1 The stopwatch
+
+A count-up timer for working time, separate from `elapsed_seconds` (which is
+just "time since the counter was started or reset", and is not something
+anyone controls).
+
+State is two numbers, not a ticking value:
+
+- `accumulated` — seconds banked by finished runs
+- `since` — wall clock at which the current run began, `0` unless running
+
+`elapsed = accumulated + (now - since)` when running, else `accumulated`.
+
+Storing an anchor instead of an accumulating counter is what makes the
+behaviour correct for free:
+
+| Action | Effect |
+|---|---|
+| `start` | if not already running, set `since = now`. Repeated `start` is a no-op, so a double click cannot restart the clock. |
+| `pause` | bank `now - since` into `accumulated`, clear `since`. Repeated `pause` is a no-op. |
+| `reset` | back to `idle`, `accumulated = 0`, `since = 0`, in one step whether or not it was running. |
+
+Two properties fall out of storing `since` in `state.json`:
+
+- **A server restart does not interrupt the clock.** The run is anchored to a
+  persisted wall-clock time, so the timer is correct again immediately after
+  a restart or a reboot, with no catch-up logic.
+- **Closing the browser tab does not interrupt it either.** Nothing is driven
+  by the page.
+
+`normalize_timer` handles the ugly cases: a `running` timer with no anchor
+(`since <= 0`, e.g. a hand-edited state file) degrades to `paused` rather than
+reporting a wild or negative number, and any non-numeric or negative value
+falls back to `0`.
+
+The counter's `reset` deliberately does **not** touch the timer. They answer
+different questions — "how far along am I" and "how long have I been at
+this" — and coupling them would make a single button silently destroy
+recorded work time.
+
 
 ### 6.3 Concurrency
 
@@ -334,6 +385,31 @@ first visit, applied pre-paint so there is no flash).
 - **Stat row (4)**: Percent, Remaining, Counted, Status — plus a quiet
   session line (`Session 2h 14m · Last command just now`) derived from the
   snapshot's elapsed/idle seconds.
+- **Stopwatch**: a thin hairline row pinned to the bottom of the page —
+  a 7 px state dot, a small-caps `STOPWATCH` label, the time, and three
+  quiet text buttons (`start` / `pause` / `reset`). It is deliberately the
+  least prominent element on the screen: no card, no fill, no glow, no
+  animation, and no seconds anywhere in the display.
+  - The time is formatted to whole minutes (`1h 24m`, `45m`, `0m`,
+    `2d 3h`) by `fmtClock`, so the digits change **once a minute**. The
+    page polls every 2 s, but `renderTimer` compares the formatted string to
+    the last one and skips the DOM write when they match — 60 polls inside
+    one minute produce 0 writes, so nothing on the page ticks or reflows.
+    This was an explicit requirement (seconds are distracting on an
+    always-on dashboard) and it is also the cheapest way to keep a
+    permanently-open tab from doing layout work forever.
+  - Exact `H:MM:SS` is kept in the `title` attribute for anyone who wants
+    to hover — available without being visible.
+  - State is carried by the dot colour (grey idle, olive running, gold
+    paused) and by which buttons are enabled: `start` is disabled while
+    running, `pause` unless running, `reset` while idle. The DOM is only
+    touched when the state string changes, not on every poll.
+  - Buttons post `/api/timer` and re-render from the response, so what you
+    see is the server's answer, never a local guess. A failed request is
+    swallowed and the next poll corrects the display.
+  - Deliberately not driven by the page: the timer is anchored to a
+    server-side wall clock, so it keeps running when the tab is closed and
+    survives a server restart.
 - **Controls (settings modal)**: title field, goal field, `SAVE` (Enter in
   either field also submits) and `RESET` (with `confirm()`) live in a popup
   behind the gear button — no always-visible control bar. Save posts
@@ -447,6 +523,39 @@ counts twice, failure counts, `exit` doesn't) and **no** `Done` job spam in
 the terminal output. The same test against the pre-fix hook (unset-variable
 typo) counts **0** — the exact production symptom.
 
+### 9.1 Stopwatch
+
+The stopwatch was verified at three levels, because the interesting bugs are
+not in the arithmetic.
+
+**Server semantics**, driven through the real HTTP API:
+
+| Check | Result |
+|---|---|
+| `start` twice in a row | still one run, not a restart |
+| run 2.5 s, then read | elapsed advanced |
+| `pause`, wait 2 s, read | frozen — the value did not move |
+| `start` again after a pause | resumes from the banked 2 s, not from 0 |
+| `reset` while running | `idle`, 0 s |
+| `{"action": "warp"}` | `400`, state untouched |
+| server killed and restarted mid-run | still `running`, elapsed continued |
+| `state.json` with no `timer` key (pre-upgrade file) | loads as `idle`, no crash |
+| `timer` with junk values (`"accumulated": "nonsense"`, `since: null`) | normalised to `paused` / 0, no crash |
+| `POST /api/reset` | count resets, stopwatch untouched |
+
+**Client logic**, run in node against the real functions extracted from
+`index.html` with a stub DOM — 33 assertions covering the formatting table
+(`0s→0m`, `59s→0m`, `60s→1m`, `90m→1h 30m`, `2d 3h`, negative/`NaN`/
+`undefined`/numeric-string inputs), an explicit check that no formatted
+value ever ends in a seconds field, the full idle/running/paused button
+matrix, the tooltip format, and the write-counting check: **60 polls inside
+one minute cause 0 DOM writes, and the 61st causes exactly 1.**
+
+**Rendering**: headless Chrome screenshots in both themes, at `0m` and at
+`1h 24m`, confirming the row sits at the bottom, reads correctly in light and
+dark, and the enabled/disabled button states match the running state.
+
+
 ## 10. Trade-offs and known limits
 
 - **Enter is the commit point.** A line typed then abandoned with Ctrl-C is
@@ -484,6 +593,10 @@ typo) counts **0** — the exact production symptom.
 - Per-day rate / ETA (needs a timestamped log, not just two integers).
 - zsh support (needs a `preexec` branch; deliberately omitted per the
   bash-only requirement).
+- Stopwatch: a target duration with a quiet "over/under" hint, or a
+  commands-per-hour derived from the existing `timer` and `count` — both are
+  one derived field in `snapshot()` and would not need new state.
+
 
 ## 12. systemd service + reboot persistence
 
