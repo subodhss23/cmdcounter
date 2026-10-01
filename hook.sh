@@ -8,7 +8,7 @@
 #   CMDCNT_URL=http://host:7777   point at another server
 #   CMDCNT_IGNORE='^(vim|less)'   regex of commands to skip
 #
-# Diagnose what a shell loaded:  echo $__cmdcount_VERSION   (expect 1.0)
+# Diagnose what a shell loaded:  echo $__cmdcount_VERSION   (expect 1.1)
 
 [ -n "${CMDCNT_URL:-}" ] || CMDCNT_URL="http://127.0.0.1:7777"
 
@@ -25,7 +25,7 @@ __cmdcount_init=0
 __cmdcount_curl=""
 __cmdcount_py=""
 __cmdcount_ignore_rx="${CMDCNT_IGNORE:-}"
-__cmdcount_VERSION="1.0"   # first marked version; a shell reports it via: echo $__cmdcount_VERSION
+__cmdcount_VERSION="1.1"   # shells report it via: echo $__cmdcount_VERSION
 
 __cmdcount_transport() {
   if [ -z "$__cmdcount_curl" ] && [ -z "$__cmdcount_py" ]; then
@@ -65,12 +65,27 @@ urllib.request.urlopen(urllib.request.Request(sys.argv[1],d,h),timeout=3).read()
   return 0
 }
 
-# Re-attach if a theme rewrote PROMPT_COMMAND.
+# Re-attach if a theme rewrote PROMPT_COMMAND, and converge to exactly one
+# entry: strip every existing copy of our entry plus legacy pre-1.1 names,
+# then prepend a single one. Re-sourcing is idempotent and can never stack.
+# (Two differently-named hook copies each keep their own baseline and count
+# every Enter twice - once per copy - so legacy names must go too.)
 __cmdcount_reattach() {
-  case ";${PROMPT_COMMAND:-};" in
-    *";__cmdcount_prompt;"*) : ;;
-    *) PROMPT_COMMAND="__cmdcount_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ;;
-  esac
+  local _pc=";${PROMPT_COMMAND:-};"
+  local _n
+  for _n in __cmdcount_prompt __cmd148_prompt; do
+    while :; do case "$_pc" in
+      *";${_n};"*) _pc=${_pc//;${_n};/;} ;;
+      *) break ;;
+    esac; done
+  done
+  _pc=${_pc#;}
+  _pc=${_pc%;}
+  if [ -n "$_pc" ]; then
+    PROMPT_COMMAND="__cmdcount_prompt;$_pc"
+  else
+    PROMPT_COMMAND="__cmdcount_prompt"
+  fi
 }
 
 __cmdcount_prompt() {
@@ -92,4 +107,10 @@ __cmdcount_prompt() {
 }
 
 __cmdcount_reattach
+# Drop our own pre-1.1 leftovers (different function names, separate state:
+# every Enter counted twice while both copies were loaded). The re-attach
+# above already removed their PROMPT_COMMAND tokens, so unsetting here is
+# silent - no "command not found" on the next prompt.
+unset -f __cmd148_prompt __cmd148_post __cmd148_skip __cmd148_transport __cmd148_reattach 2>/dev/null || true
+unset __cmd148_url 2>/dev/null || true
 unset __cmdcount_raw __cmdcount_cmd

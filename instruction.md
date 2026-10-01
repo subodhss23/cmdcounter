@@ -262,7 +262,7 @@ Then on the box: `sudo cp hook.sh /etc/profile.d/cmdcount.sh` (or re-run
 either way). `start.sh` prints a warning when the installed hook actually
 changed. Then re-source running shells
 (`. /etc/profile.d/cmdcount.sh`) or open new terminals, and verify with
-`echo $__cmdcount_VERSION` (expect `1.0`).
+`echo $__cmdcount_VERSION` (expect `1.1`).
 
 ### Ignore certain commands
 
@@ -371,7 +371,7 @@ Not counted:
    it. Then open a fresh terminal.
 6. Updated `hook.sh` but an old shell still misbehaves? Sourcing copies the
    functions into shell memory, so running shells keep whatever version
-   they loaded. Quick check: `echo $__cmdcount_VERSION` (expect `1.0`;
+   they loaded. Quick check: `echo $__cmdcount_VERSION` (expect `1.1`;
    empty means pre-version hook — definitely stale). Definitive check:
    `declare -f __cmdcount_skip | head -8`. Then re-source
    (`. /etc/profile.d/cmdcount.sh`) or open a new terminal.
@@ -404,14 +404,27 @@ Rule of thumb: `index.html` needs no restart, everything else does.
 
 **Commands counted twice.**
 
-The hook got sourced twice (e.g. duplicate lines in rc files). Check:
+Each Enter should log exactly one `POST /api/hit 200` line (`tail -f
+cmdcount.log` in nohup mode, `journalctl -u cmdcount -f` in service mode).
+Two lines per Enter means two hook copies are loaded in that shell: a stale
+copy under a different function name (e.g. a pre-1.1 `__cmd148_prompt`
+leftover or old workaround lines in `~/.bashrc`) keeps its own baseline, so
+every command posts once per copy. Check:
 
 ```bash
-grep -n cmdcount ~/.bashrc /etc/bashrc /etc/bash.bashrc /etc/profile.d/cmdcount.sh
+echo $__cmdcount_VERSION        # want 1.1; empty = stale pre-version hook
+echo "$PROMPT_COMMAND"          # want exactly one __cmdcount_prompt
+declare -f | grep -E "__cmd(148|count)_prompt"   # want only __cmdcount_prompt
+grep -n "cmd148\|cmdcount\|cmdcnt" ~/.bashrc /etc/bashrc /etc/bash.bashrc
 ```
 
-There should be exactly one `source` line per rc file. Remove duplicates,
-then open a fresh shell.
+Hook 1.1 removes stale `__cmd148_*` copies and collapses duplicate
+`PROMPT_COMMAND` entries on load, so deploying it fixes this going forward.
+On the box: copy over the new `hook.sh`, reinstall it (`sudo cp hook.sh
+/etc/profile.d/cmdcount.sh` or re-run `./start.sh` — count preserved),
+delete any stale `__cmd148_*` / duplicate source lines the grep above finds
+in rc files, then open a fresh terminal (or `. /etc/profile.d/cmdcount.sh`)
+and confirm `echo $__cmdcount_VERSION` prints `1.1`.
 
 **`set +o history` was run.**
 

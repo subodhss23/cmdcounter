@@ -184,7 +184,10 @@ esac
 
 String compare only, no fork in the common case, so the re-attach itself is
 free. Re-sourcing the profile is idempotent — the function is never added
-twice.
+twice: re-attach strips every existing copy of the entry (plus legacy
+pre-1.1 `__cmd148_prompt` tokens, which otherwise keep their own baseline
+and count every Enter twice — once per copy) and prepends exactly one, and
+sourcing unsets the legacy `__cmd148_*` functions outright.
 
 ### 5.6 Guards
 
@@ -506,7 +509,7 @@ Hook updates only land in shells started afterwards. Sourcing copies the
 function bodies into each shell's memory, so reinstalling `hook.sh` never
 changes already-running shells — open a new terminal or re-source
 (`. /etc/profile.d/cmdcount.sh`). Two aids exist for this: the hook
-carries `__cmdcount_VERSION` (`1.0`, first marked version — a shell reports it
+carries `__cmdcount_VERSION` (`1.1` — a shell reports it
 via `echo $__cmdcount_VERSION`), and `start.sh` checksum-compares source vs
 installed hook and prints a re-source reminder only when they differ.
 `declare -f __cmdcount_skip` shows exactly which version a shell is running;

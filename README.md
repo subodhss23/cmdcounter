@@ -84,7 +84,7 @@ Then on the box: `sudo cp hook.sh /etc/profile.d/cmdcount.sh` (or re-run
 `./start.sh` / `./start.sh --install-service` — count preserved either way),
 and re-source running shells (`. /etc/profile.d/cmdcount.sh`) or open new
 terminals. `start.sh` warns you when the installed hook actually changed.
-Check what a shell loaded with `echo $__cmdcount_VERSION` (expect `1.0`).
+Check what a shell loaded with `echo $__cmdcount_VERSION` (expect `1.1`).
 
 ## Persistence
 
